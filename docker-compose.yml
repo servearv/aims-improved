@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Service 1: The Database
+  db:
+    image: postgres:16-alpine
+    container_name: aims_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}      # Read from .env file
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # Read from .env file
+      POSTGRES_DB: ${DB_NAME}        # Read from .env file
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data # <--- CRITICAL: Persists data on your hard drive
+
+  # Service 2: Database Viewer 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: aims_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aims.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  # # Go Backend
+  # api:
+  #   build: ./backend
+  #   ports: ["8080:8080"]
+  #   depends_on: ["db"]

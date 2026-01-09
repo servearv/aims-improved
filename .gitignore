@@ -28,5 +28,19 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+.vim/
+
+# Ignore Database Data (Size & Security)
+pg_data/
+
+# Ignore Dependency Folders (Size)
+backend/vendor/
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
