@@ -1,5 +1,5 @@
 services:
-  # Service 1: The Database
+  # The Database
   db:
     image: postgres:16-alpine
     container_name: aims_postgres
@@ -13,21 +13,27 @@ services:
     volumes:
       - ./pg_data:/var/lib/postgresql/data # <--- CRITICAL: Persists data on your hard drive
 
-  # Service 2: Database Viewer 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: aims_pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@aims.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+  # # Database Viewer 
+  # pgadmin:
+  #   image: dpage/pgadmin4 
+  #   container_name: aims_pgadmin
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@aims.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     - db
+
+  # Backend API Service
+  api:
+    build: ./backend
+    container_name: aims_backend
     ports:
-      - "5050:80"
+      - "8080:8080"
+    env_file:
+      - .env
     depends_on:
       - db
 
-  # # Go Backend
-  # api:
-  #   build: ./backend
-  #   ports: ["8080:8080"]
-  #   depends_on: ["db"]
