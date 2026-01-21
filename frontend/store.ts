@@ -6,12 +6,13 @@ interface AppState {
   theme: 'light' | 'dark';
   isAuthenticated: boolean;
   currentUser: User;
+  token: string | null;
   courses: Course[];
   requests: RegistrationRequest[];
   
   // Actions
   toggleTheme: () => void;
-  login: (email: string) => void;
+  login: (email: string, user?: User, token?: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   
@@ -24,6 +25,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: 'dark', // Default
   isAuthenticated: false, // Default to false to show Login screen first
   currentUser: MOCK_USERS.student,
+  token: null,
   courses: MOCK_COURSES,
   requests: INITIAL_REQUESTS,
 
@@ -31,26 +33,44 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' }));
   },
 
-  login: (email: string) => {
-    // Simple mock logic to map emails to roles for the demo
-    let userToSet = MOCK_USERS.student;
-    
-    if (email.includes('prof') || email.includes('dr')) {
-      userToSet = MOCK_USERS.instructor;
-    } else if (email.includes('advisor')) {
-      userToSet = MOCK_USERS.advisor;
-    } else if (email.includes('admin')) {
-      userToSet = MOCK_USERS.admin;
-    }
+  login: (email: string, user?: User, token?: string) => {
+    if (user && token) {
+      // Backend authentication - use actual user data
+      set({ 
+        isAuthenticated: true, 
+        currentUser: user,
+        token: token
+      });
+      // Store token in localStorage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      // Fallback to mock logic for demo
+      let userToSet = MOCK_USERS.student;
+      
+      if (email.includes('prof') || email.includes('dr')) {
+        userToSet = MOCK_USERS.instructor;
+      } else if (email.includes('advisor')) {
+        userToSet = MOCK_USERS.advisor;
+      } else if (email.includes('admin')) {
+        userToSet = MOCK_USERS.admin;
+      }
 
-    set({ 
-      isAuthenticated: true, 
-      currentUser: { ...userToSet, email: email } 
-    });
+      set({ 
+        isAuthenticated: true, 
+        currentUser: { ...userToSet, email: email },
+        token: null
+      });
+    }
   },
 
   logout: () => {
-    set({ isAuthenticated: false });
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    set({ 
+      isAuthenticated: false,
+      token: null
+    });
   },
 
   switchRole: (role) => {

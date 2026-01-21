@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # The Database
   db:
@@ -19,6 +17,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - aims-network
 
   # Backend API Service
   api:

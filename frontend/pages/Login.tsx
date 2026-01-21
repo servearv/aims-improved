@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, ArrowRight, Loader2, ShieldCheck, ChevronLeft, Lock, Sun, Moon, Settings, CheckCircle } from 'lucide-react';
 import { useAppStore } from '../store';
 import { Toast, Modal, Input, Button } from '../components/ui';
-import { requestOtp, verifyOtp } from '../utils/auth-crypto';
+import { requestOtpFromBackend, verifyOtpWithBackend } from '../utils/api';
 import { sendOtpEmail, saveEmailConfig, getEmailConfig, clearEmailConfig } from '../utils/email';
 
 const Login: React.FC = () => {
@@ -14,9 +14,7 @@ const Login: React.FC = () => {
   const [step, setStep] = useState<'EMAIL' | 'OTP'>('EMAIL');
   const [email, setEmail] = useState('');
   
-  // Auth Protocol State
-  const [hash, setHash] = useState('');
-  const [expires, setExpires] = useState(0);
+  // Auth Protocol State (keeping for fallback, but using backend primarily)
   const [otpInput, setOtpInput] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
@@ -91,9 +89,6 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setToast(prev => ({ ...prev, visible: false }));
 
-    // Mock Network Delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     // Allow @gmail.com for testing purposes
     const domainRegex = /^[a-zA-Z0-9._%+-]+@(iitrpr\.ac\.in|gmail\.com)$/;
     
@@ -103,52 +98,39 @@ const Login: React.FC = () => {
       return;
     }
     
-    // --- START: Stateless OTP Protocol (Generation) ---
+    // --- REQUEST OTP FROM BACKEND ---
     try {
-      const response = await requestOtp(email);
-      setHash(response.hash);
-      setExpires(response.expires);
+      await requestOtpFromBackend(email);
       
-      // --- EMAIL INTEGRATION ---
-      const result = await sendOtpEmail(email, response.otp);
-      
-      if (result.success) {
-        showToast(`Verification code sent to ${email}`, 'success');
-      } else {
-        // Fallback or Config Prompt
-        if (result.error === 'not_configured') {
-           showToast(`[DEMO MODE] Code: ${response.otp}. Setup EmailJS to send real emails.`, 'warning');
-        } else {
-           showToast(`Failed to send email: ${result.error}. Demo Code: ${response.otp}`, 'error');
-        }
-      }
-
+      // If backend successfully sent OTP
+      showToast(`Verification code sent to ${email}`, 'success');
       setIsLoading(false);
       setStep('OTP');
       setTimer(30);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to generate secure signature.');
+    } catch (err: any) {
+      console.error('OTP request error:', err);
+      const errorMessage = err.message || 'Failed to send verification code. Please try again.';
+      setError(errorMessage);
       setIsLoading(false);
+      showToast(errorMessage, 'error');
     }
-    // --- END: Stateless OTP Protocol ---
   };
 
   const handleResend = async () => {
     setTimer(30);
     setOtpInput('');
     setError('');
+    setIsLoading(true);
     
-    const response = await requestOtp(email);
-    setHash(response.hash);
-    setExpires(response.expires);
-    
-    const result = await sendOtpEmail(email, response.otp);
-    
-    if (result.success) {
-      showToast('New code sent via Email', 'success');
-    } else {
-       showToast(`[DEMO MODE] Your new code is: ${response.otp}`, 'warning');
+    try {
+      await requestOtpFromBackend(email);
+      showToast('New verification code sent to your email', 'success');
+      setIsLoading(false);
+    } catch (err: any) {
+      console.error('Resend OTP error:', err);
+      setError(err.message || 'Failed to resend code. Please try again.');
+      setIsLoading(false);
+      showToast(err.message || 'Failed to resend code', 'error');
     }
   };
 
@@ -157,23 +139,38 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    // Mock Network Delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const isValid = await verifyOtp(email, otpInput, hash, expires);
-
-    if (!isValid && otpInput !== '123456') { 
-      setError('Invalid or expired code. Please try again.');
+    try {
+      // Verify OTP with backend
+      const result = await verifyOtpWithBackend(email, otpInput);
+      
+      if (result.success && result.token && result.user) {
+        showToast('Verification successful. Logging in...', 'success');
+        
+        // Convert backend user format to frontend User format
+        const frontendUser = {
+          id: result.user.id?.toString() || email,
+          name: result.user.name || email.split('@')[0],
+          email: result.user.email || email,
+          role: result.user.role as any, // Backend role should match UserRole enum
+          status: result.user.is_active ? 'Active' as const : 'Inactive' as const,
+        };
+        
+        // Login with backend data
+        login(email, frontendUser, result.token);
+        
+        setTimeout(() => {
+          navigate('/');
+        }, 500);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err: any) {
+      console.error('OTP verification error:', err);
+      const errorMessage = err.message || 'Invalid or expired code. Please try again.';
+      setError(errorMessage);
       setIsLoading(false);
-      return;
+      showToast(errorMessage, 'error');
     }
-    
-    showToast('Secure handshake successful. Logging in...', 'success');
-    
-    setTimeout(() => {
-        login(email);
-        navigate('/');
-    }, 500);
   };
 
   return (

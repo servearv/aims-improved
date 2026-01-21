@@ -6,8 +6,13 @@ import { signToken } from "../../utils/jwt.js";
 
 export const requestOtpService = async (email) => {
   const user = await findUserByEmail(email);
-  if (!user || !user.is_active) {
-    throw new Error("Invalid user");
+  
+  if (!user) {
+    throw new Error("This email address is not registered. Please contact an administrator to create an account.");
+  }
+  
+  if (!user.is_active) {
+    throw new Error("Account is inactive. Please contact support.");
   }
 
   const otp = generateOtp();
@@ -58,5 +63,15 @@ export const verifyOtpService = async (email, otp) => {
 
   await deleteOtp(email);
 
-  return { token, user };
+  // Return user data in a clean format
+  return { 
+    token, 
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      is_active: user.is_active,
+      name: user.email.split('@')[0] // Use email prefix as name if name field doesn't exist
+    }
+  };
 };

@@ -1,6 +1,6 @@
 /**
  * Backend API Client
- * Falls back to client-side auth if backend is unavailable
+ * Connects frontend to backend API
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -16,13 +16,24 @@ export async function requestOtpFromBackend(email: string) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to request OTP');
+      let errorMessage = 'Failed to request OTP';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch {
+        errorMessage = `Server error: ${response.status}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    return { success: true };
+    const data = await response.json();
+    return { success: true, message: data.message };
   } catch (error: any) {
     console.error('Backend OTP request failed:', error);
+    // Re-throw with a user-friendly message if it's a network error
+    if (error.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Please check if the backend is running.');
+    }
     throw error;
   }
 }
@@ -38,8 +49,14 @@ export async function verifyOtpWithBackend(email: string, otp: string) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Invalid OTP');
+      let errorMessage = 'Invalid OTP';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch {
+        errorMessage = `Server error: ${response.status}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -50,6 +67,10 @@ export async function verifyOtpWithBackend(email: string, otp: string) {
     };
   } catch (error: any) {
     console.error('Backend OTP verification failed:', error);
+    // Re-throw with a user-friendly message if it's a network error
+    if (error.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Please check if the backend is running.');
+    }
     throw error;
   }
 }
