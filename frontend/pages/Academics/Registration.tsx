@@ -1,0 +1,382 @@
+import React from 'react';
+import { useAppStore } from '../../store';
+import { UserRole, RegistrationStatus, Course } from '../../types';
+import { Card, Button, Badge } from '../../components/ui';
+import { Check, X, Clock, AlertTriangle, Search, ChevronRight, Filter, User, Book } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const Registration: React.FC = () => {
+  const { currentUser } = useAppStore();
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Course Registration</h1>
+        <p className="text-gray-400 text-sm">Spring Semester 2024 • Phase II</p>
+      </div>
+
+      {currentUser.role === UserRole.STUDENT && <StudentRegistrationView />}
+      {currentUser.role === UserRole.INSTRUCTOR && <InstructorApprovalView />}
+      {currentUser.role === UserRole.ADVISOR && <AdvisorApprovalView />}
+      {currentUser.role === UserRole.ADMIN && <div className="p-8 text-center text-gray-500 border border-dashed border-white/10 rounded-xl">Admin view not implemented for demo.</div>}
+    </div>
+  );
+};
+
+// --- Student View Components ---
+
+const StudentRegistrationView: React.FC = () => {
+  const { courses, requests, addRequest } = useAppStore();
+
+  const getRequestForCourse = (courseId: string) => requests.find(r => r.courseId === courseId);
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      {/* Course List */}
+      <Card className="xl:col-span-2 p-0 overflow-hidden border-white/10 bg-[#18181b]">
+        <div className="p-5 border-b border-white/10 bg-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="font-semibold text-white">Available Courses</h3>
+            <p className="text-xs text-gray-400 mt-1">Select electives for the current semester.</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+            <input 
+              type="text" 
+              placeholder="Search by code or name..." 
+              className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500/50 transition-colors placeholder-gray-600" 
+            />
+          </div>
+        </div>
+        <div className="divide-y divide-white/5">
+          {courses.map(course => {
+            const existingRequest = getRequestForCourse(course.id);
+            const isPending = existingRequest && existingRequest.status !== RegistrationStatus.APPROVED && !existingRequest.status.includes('REJECTED');
+            const isApproved = existingRequest?.status === RegistrationStatus.APPROVED;
+
+            return (
+              <div key={course.id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{course.code}</span>
+                    <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{course.name}</h4>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                    <div className="flex items-center gap-1.5">
+                      <User size={12} />
+                      {course.instructorName}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Book size={12} />
+                      {course.credits} Credits
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={12} />
+                      {course.schedule}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  {existingRequest ? (
+                    <div className="flex items-center gap-2">
+                      {isApproved && <span className="flex items-center gap-1 text-xs text-green-500 font-medium"><Check size={14} /> Enrolled</span>}
+                      {isPending && <span className="flex items-center gap-1 text-xs text-yellow-500 font-medium"><Clock size={14} /> Processing</span>}
+                      {existingRequest.status.includes('REJECTED') && <span className="flex items-center gap-1 text-xs text-red-500 font-medium"><X size={14} /> Rejected</span>}
+                    </div>
+                  ) : (
+                    <Button size="sm" onClick={() => addRequest(course.id)} className="w-full sm:w-auto">Enroll</Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Status Tracker */}
+      <div className="space-y-6">
+        <h3 className="font-semibold text-lg">My Requests</h3>
+        {requests.length === 0 && (
+          <div className="p-8 rounded-xl border border-dashed border-white/10 text-center text-gray-500 bg-[#18181b]/50">
+            <Book className="w-8 h-8 mx-auto mb-3 opacity-20" />
+            <p className="text-sm">No courses selected yet.</p>
+          </div>
+        )}
+        
+        <AnimatePresence>
+          {requests.map(req => (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              key={req.id} 
+              className="bg-[#18181b] rounded-xl border border-white/10 p-5 shadow-lg relative overflow-hidden"
+            >
+              {req.status === RegistrationStatus.APPROVED && (
+                <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
+                  <div className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 rotate-45 bg-green-500/20 w-full h-2 bg-green-500"></div>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h4 className="font-medium text-white">{req.courseName}</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Request ID: #{req.id.slice(-6)}</p>
+                </div>
+                <StatusBadge status={req.status} />
+              </div>
+
+              {/* Workflow Stepper */}
+              <div className="relative pt-2">
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/5 -translate-y-1/2 rounded-full"></div>
+                <div className="relative flex justify-between text-[10px] font-medium text-gray-500">
+                  <StepIndicator 
+                    label="Instructor" 
+                    state={getStepState(req.status, 'instructor')} 
+                  />
+                  <StepIndicator 
+                    label="Advisor" 
+                    state={getStepState(req.status, 'advisor')} 
+                  />
+                  <StepIndicator 
+                    label="Registered" 
+                    state={getStepState(req.status, 'final')} 
+                    isLast
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+// Helper for stepper logic
+const getStepState = (status: RegistrationStatus, step: 'instructor' | 'advisor' | 'final') => {
+  const isRejected = status.includes('REJECTED');
+  if (isRejected) return 'error';
+
+  if (step === 'instructor') {
+    if (status === RegistrationStatus.PENDING_INSTRUCTOR) return 'current';
+    return 'completed'; // Pending advisor or approved means passed instructor
+  }
+  if (step === 'advisor') {
+    if (status === RegistrationStatus.PENDING_INSTRUCTOR) return 'waiting';
+    if (status === RegistrationStatus.PENDING_ADVISOR) return 'current';
+    return 'completed';
+  }
+  if (step === 'final') {
+    if (status === RegistrationStatus.APPROVED) return 'completed';
+    return 'waiting';
+  }
+  return 'waiting';
+};
+
+const StepIndicator = ({ label, state, isLast }: { label: string, state: 'waiting' | 'current' | 'completed' | 'error', isLast?: boolean }) => {
+  const bg = 
+    state === 'completed' ? 'bg-green-500 border-green-500 text-black' :
+    state === 'current' ? 'bg-blue-500 border-blue-500 text-white animate-pulse' :
+    state === 'error' ? 'bg-red-500 border-red-500 text-white' :
+    'bg-[#09090b] border-gray-700 text-gray-500';
+  
+  const icon = 
+    state === 'completed' ? <Check size={10} strokeWidth={4} /> :
+    state === 'error' ? <X size={10} strokeWidth={4} /> :
+    <div className="w-1.5 h-1.5 bg-current rounded-full" />;
+
+  return (
+    <div className="flex flex-col items-center gap-2 relative z-10">
+      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors duration-300 ${bg}`}>
+        {icon}
+      </div>
+      <span className={`${state === 'current' ? 'text-blue-400' : state === 'completed' ? 'text-green-500' : ''}`}>
+        {label}
+      </span>
+    </div>
+  );
+};
+
+const StatusBadge = ({ status }: { status: RegistrationStatus }) => {
+  if (status === RegistrationStatus.APPROVED) return <Badge color="green">Registered</Badge>;
+  if (status.includes('PENDING')) return <Badge color="yellow">In Progress</Badge>;
+  if (status.includes('REJECTED')) return <Badge color="red">Action Required</Badge>;
+  return <Badge color="gray">Unknown</Badge>;
+};
+
+// --- Instructor View ---
+
+const InstructorApprovalView: React.FC = () => {
+  const { requests, updateRequestStatus } = useAppStore();
+  
+  // Filter for instructor (mock logic)
+  const pendingRequests = requests.filter(r => r.status === RegistrationStatus.PENDING_INSTRUCTOR);
+
+  return (
+    <Card className="p-0 overflow-hidden border-white/10 bg-[#18181b]">
+       <div className="p-6 border-b border-white/10 bg-white/5 flex justify-between items-center">
+          <div>
+            <h3 className="font-semibold text-white">Pending Course Approvals</h3>
+            <p className="text-xs text-gray-400 mt-1">Review student enrollment requests for your courses.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost"><Filter size={14} /> Filter</Button>
+            <Button size="sm" variant="secondary">Bulk Action</Button>
+          </div>
+       </div>
+
+       {pendingRequests.length === 0 ? (
+         <div className="p-16 text-center text-gray-500 flex flex-col items-center">
+           <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+             <Check className="w-8 h-8 opacity-40 text-green-500" />
+           </div>
+           <p className="font-medium text-white">All caught up!</p>
+           <p className="text-sm mt-1">There are no pending requests for your courses.</p>
+         </div>
+       ) : (
+         <div className="overflow-x-auto">
+           <table className="w-full text-sm text-left">
+             <thead className="bg-black/20 text-gray-400 border-b border-white/5">
+               <tr>
+                 <th className="px-6 py-4 font-medium">Student Name</th>
+                 <th className="px-6 py-4 font-medium">Course Requested</th>
+                 <th className="px-6 py-4 font-medium">Request Date</th>
+                 <th className="px-6 py-4 font-medium">CGPA (Mock)</th>
+                 <th className="px-6 py-4 font-medium text-right">Decision</th>
+               </tr>
+             </thead>
+             <tbody className="divide-y divide-white/5">
+               {pendingRequests.map(req => (
+                 <motion.tr 
+                   layout 
+                   initial={{ opacity: 0 }} 
+                   animate={{ opacity: 1 }} 
+                   exit={{ opacity: 0 }}
+                   key={req.id} 
+                   className="hover:bg-white/[0.02] transition-colors"
+                 >
+                   <td className="px-6 py-4 font-medium text-white">
+                     <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-xs font-bold">
+                         {req.studentName.charAt(0)}
+                       </div>
+                       {req.studentName}
+                     </div>
+                   </td>
+                   <td className="px-6 py-4 text-gray-300">
+                     <span className="bg-white/5 px-2 py-1 rounded border border-white/5 text-xs mr-2">Core</span>
+                     {req.courseName}
+                   </td>
+                   <td className="px-6 py-4 text-gray-500">{new Date(req.timestamp).toLocaleDateString()}</td>
+                   <td className="px-6 py-4 text-gray-500">8.5</td>
+                   <td className="px-6 py-4 text-right flex justify-end gap-3">
+                     <button 
+                       onClick={() => updateRequestStatus(req.id, RegistrationStatus.REJECTED_INSTRUCTOR)}
+                       className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                       title="Reject Request"
+                     >
+                       <X size={18} />
+                     </button>
+                     <button 
+                       onClick={() => updateRequestStatus(req.id, RegistrationStatus.PENDING_ADVISOR)}
+                       className="px-4 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                     >
+                       <Check size={14} /> Approve
+                     </button>
+                   </td>
+                 </motion.tr>
+               ))}
+             </tbody>
+           </table>
+         </div>
+       )}
+    </Card>
+  );
+};
+
+// --- Advisor View ---
+
+const AdvisorApprovalView: React.FC = () => {
+  const { requests, updateRequestStatus } = useAppStore();
+  
+  // Advisor sees requests that have passed instructor approval
+  const pendingRequests = requests.filter(r => r.status === RegistrationStatus.PENDING_ADVISOR);
+
+  return (
+    <Card className="p-0 overflow-hidden border-white/10 bg-[#18181b]">
+       <div className="p-6 border-b border-white/10 bg-white/5 flex justify-between items-center">
+          <div>
+             <h3 className="font-semibold text-white">Final Approval Queue</h3>
+             <p className="text-xs text-gray-400 mt-1">Review approved courses for your advisees.</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/10">
+            <AlertTriangle size={14} />
+            <span>Deadline: Mar 25</span>
+          </div>
+       </div>
+
+       {pendingRequests.length === 0 ? (
+         <div className="p-16 text-center text-gray-500 flex flex-col items-center">
+           <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+             <Check className="w-8 h-8 opacity-40 text-blue-500" />
+           </div>
+           <p className="font-medium text-white">Queue Empty</p>
+           <p className="text-sm mt-1">No advisee requests pending final approval.</p>
+         </div>
+       ) : (
+         <div className="overflow-x-auto">
+           <table className="w-full text-sm text-left">
+             <thead className="bg-black/20 text-gray-400 border-b border-white/5">
+               <tr>
+                 <th className="px-6 py-4 font-medium">Student</th>
+                 <th className="px-6 py-4 font-medium">Course Details</th>
+                 <th className="px-6 py-4 font-medium">Instructor Status</th>
+                 <th className="px-6 py-4 font-medium">Credits</th>
+                 <th className="px-6 py-4 font-medium text-right">Final Decision</th>
+               </tr>
+             </thead>
+             <tbody className="divide-y divide-white/5">
+               {pendingRequests.map(req => (
+                 <tr key={req.id} className="hover:bg-white/[0.02] transition-colors">
+                   <td className="px-6 py-4 font-medium text-white">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-xs font-bold">
+                         {req.studentName.charAt(0)}
+                       </div>
+                       <div>
+                         <p>{req.studentName}</p>
+                         <p className="text-[10px] text-gray-500">2023CSB110X</p>
+                       </div>
+                     </div>
+                   </td>
+                   <td className="px-6 py-4 text-gray-300">{req.courseName}</td>
+                   <td className="px-6 py-4">
+                     <Badge color="green">Instructor Approved</Badge>
+                   </td>
+                   <td className="px-6 py-4 text-gray-500">4</td>
+                   <td className="px-6 py-4 text-right flex justify-end gap-3">
+                     <button 
+                       onClick={() => updateRequestStatus(req.id, RegistrationStatus.REJECTED_ADVISOR)}
+                       className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                     >
+                       <X size={18} />
+                     </button>
+                     <button 
+                       onClick={() => updateRequestStatus(req.id, RegistrationStatus.APPROVED)}
+                       className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20"
+                     >
+                       Finalize
+                     </button>
+                   </td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+         </div>
+       )}
+    </Card>
+  );
+};
+
+export default Registration;

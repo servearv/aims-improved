@@ -1,0 +1,5 @@
+{
+  "name": "AIMS Portal",
+  "description": "A high-fidelity Academic Information Management System modeled after IIT Ropar, featuring role-based workflows.",
+  "requestFramePermissions": []
+}

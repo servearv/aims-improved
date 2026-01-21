@@ -1,16 +1,20 @@
-FROM eclipse-temurin:17-jdk
+FROM node:20-alpine
+
+# Install wget for healthcheck
+RUN apk add --no-cache wget
 
 WORKDIR /app
 
-COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
-RUN ./mvnw dependency:go-offline
+# Copy package definition
+COPY package.json ./
 
-COPY src src
-RUN ./mvnw package -DskipTests
+# Install all dependencies (simple + flexible for development)
+RUN npm install
+
+# Copy application source
+COPY src ./src
+COPY schema.sql ./schema.sql
 
 EXPOSE 8080
 
-CMD ["java", "-jar", "target/backend-0.0.1-SNAPSHOT.jar"]
-
+CMD ["node", "src/server.js"]

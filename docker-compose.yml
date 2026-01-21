@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # The Database
   db:
@@ -5,26 +7,18 @@ services:
     container_name: aims_postgres
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}      # Read from .env file
-      POSTGRES_PASSWORD: ${DB_PASSWORD} # Read from .env file
-      POSTGRES_DB: ${DB_NAME}        # Read from .env file
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin_pass}
+      POSTGRES_DB: ${DB_NAME:-aims_db}
     ports:
       - "5432:5432"
     volumes:
-      - ./pg_data:/var/lib/postgresql/data # <--- CRITICAL: Persists data on your hard drive
-
-  # # Database Viewer 
-  # pgadmin:
-  #   image: dpage/pgadmin4 
-  #   container_name: aims_pgadmin
-  #   restart: always
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: admin@aims.com
-  #     PGADMIN_DEFAULT_PASSWORD: admin
-  #   ports:
-  #     - "5050:80"
-  #   depends_on:
-  #     - db
+      - ./pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-aims_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Backend API Service
   api:
@@ -32,8 +26,50 @@ services:
     container_name: aims_backend
     ports:
       - "8080:8080"
-    env_file:
-      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-admin}
+      - DB_PASSWORD=${DB_PASSWORD:-admin_pass}
+      - DB_NAME=${DB_NAME:-aims_db}
+      - PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      - NODE_ENV=${NODE_ENV:-production}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - aims-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
+        - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    container_name: aims_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - aims-network
+    restart: always
+
+networks:
+  aims-network:
+    driver: bridge
