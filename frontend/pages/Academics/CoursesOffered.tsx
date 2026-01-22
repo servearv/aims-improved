@@ -1,13 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Input, Badge } from '../../components/ui';
-import { Search, Eraser, Info } from 'lucide-react';
-import { MOCK_COURSES } from '../../constants';
-import { Course } from '../../types';
+import { Search, Eraser, Info, Loader2 } from 'lucide-react';
+import { getAllCourses } from '../../utils/api';
+
+interface CourseData {
+  course_id: string;
+  title: string;
+  credits: number;
+  instructor_email?: string;
+  instructor_dept?: string;
+  type?: string;
+  status?: string;
+  ltp?: string;
+}
 
 const CoursesOffered: React.FC = () => {
-  const [results, setResults] = useState<Course[]>([]);
+  const [results, setResults] = useState<CourseData[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Filter States
   const [filters, setFilters] = useState({
@@ -20,18 +31,38 @@ const CoursesOffered: React.FC = () => {
     status: ''
   });
 
-  const handleSearch = () => {
-    setHasSearched(true);
-    // Simple filter logic for mock data
-    const filtered = MOCK_COURSES.filter(course => {
-      const matchDept = !filters.department || course.department?.toLowerCase() === filters.department.toLowerCase();
-      const matchCode = !filters.code || course.code.toLowerCase().includes(filters.code.toLowerCase());
-      const matchTitle = !filters.title || course.name.toLowerCase().includes(filters.title.toLowerCase());
-      const matchInstructor = !filters.instructor || course.instructorName.toLowerCase().includes(filters.instructor.toLowerCase());
+  const handleSearch = async () => {
+    try {
+      setHasSearched(true);
+      setLoading(true);
       
-      return matchDept && matchCode && matchTitle && matchInstructor;
-    });
-    setResults(filtered);
+      const apiFilters: any = {};
+      if (filters.status) apiFilters.status = filters.status;
+      
+      const data = await getAllCourses(apiFilters);
+      let courses = data.courses || [];
+      
+      // Apply client-side filtering for additional filters
+      if (filters.code) {
+        courses = courses.filter(c => c.course_id.toLowerCase().includes(filters.code.toLowerCase()));
+      }
+      if (filters.title) {
+        courses = courses.filter(c => c.title.toLowerCase().includes(filters.title.toLowerCase()));
+      }
+      if (filters.instructor) {
+        courses = courses.filter(c => 
+          c.instructor_email?.toLowerCase().includes(filters.instructor.toLowerCase()) ||
+          c.instructor_dept?.toLowerCase().includes(filters.instructor.toLowerCase())
+        );
+      }
+      
+      setResults(courses);
+    } catch (err: any) {
+      console.error('Error fetching courses:', err);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {
@@ -184,9 +215,14 @@ const CoursesOffered: React.FC = () => {
           <h3 className="text-sm font-semibold text-white ml-2">Results</h3>
         </div>
         
-        {!hasSearched && results.length === 0 ? (
+        {loading ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-             <p>Nothing to show yet!</p>
+            <Loader2 className="w-8 h-8 mb-4 animate-spin text-blue-500" />
+            <p>Loading courses...</p>
+          </div>
+        ) : !hasSearched && results.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+             <p>Nothing to show yet! Click Search to load courses.</p>
           </div>
         ) : results.length === 0 ? (
            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -209,13 +245,13 @@ const CoursesOffered: React.FC = () => {
                 {results.map((course) => (
                   <tr key={course.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3 text-white">
-                      <span className="font-mono text-gray-400 mr-2">{course.code}</span>
-                      <span className="bg-white/5 px-1.5 py-0.5 rounded text-[10px] border border-white/5">{course.department}</span>
+                      <span className="font-mono text-gray-400 mr-2">{course.course_id}</span>
+                      <span className="bg-white/5 px-1.5 py-0.5 rounded text-[10px] border border-white/5">{course.instructor_dept || 'CSE'}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-300 font-medium">{course.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{course.session || '2024-II'}</td>
+                    <td className="px-4 py-3 text-gray-300 font-medium">{course.title}</td>
+                    <td className="px-4 py-3 text-gray-500">{filters.session || '2024-II'}</td>
                     <td className="px-4 py-3 text-gray-400 font-mono">{course.ltp || '3-0-0'}</td>
-                    <td className="px-4 py-3 text-gray-400">{course.instructorName}</td>
+                    <td className="px-4 py-3 text-gray-400">{course.instructor_email || 'N/A'}</td>
                     <td className="px-4 py-3">
                        <Badge color="green">{course.status || 'Offered'}</Badge>
                     </td>

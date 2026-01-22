@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, ArrowRight, Loader2, ShieldCheck, ChevronLeft, Lock, Sun, Moon, Settings, CheckCircle } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, ShieldCheck, ChevronLeft, Lock, Sun, Moon, Settings, CheckCircle, User, Briefcase, GraduationCap } from 'lucide-react';
 import { useAppStore } from '../store';
 import { Toast, Modal, Input, Button } from '../components/ui';
 import { requestOtpFromBackend, verifyOtpWithBackend } from '../utils/api';
@@ -10,13 +10,15 @@ import { sendOtpEmail, saveEmailConfig, getEmailConfig, clearEmailConfig } from 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, theme, toggleTheme } = useAppStore();
-  
-  const [step, setStep] = useState<'EMAIL' | 'OTP'>('EMAIL');
+
+  const [step, setStep] = useState<'EMAIL' | 'OTP' | 'ROLE'>('EMAIL');
   const [email, setEmail] = useState('');
-  
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [tempAuthData, setTempAuthData] = useState<any>(null);
+
   // Auth Protocol State (keeping for fallback, but using backend primarily)
   const [otpInput, setOtpInput] = useState('');
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [timer, setTimer] = useState(30);
@@ -91,17 +93,17 @@ const Login: React.FC = () => {
 
     // Allow @gmail.com for testing purposes
     const domainRegex = /^[a-zA-Z0-9._%+-]+@(iitrpr\.ac\.in|gmail\.com)$/;
-    
+
     if (!domainRegex.test(email)) {
       setError('Access restricted to @iitrpr.ac.in accounts (or @gmail.com for testing).');
       setIsLoading(false);
       return;
     }
-    
+
     // --- REQUEST OTP FROM BACKEND ---
     try {
       await requestOtpFromBackend(email);
-      
+
       // If backend successfully sent OTP
       showToast(`Verification code sent to ${email}`, 'success');
       setIsLoading(false);
@@ -121,7 +123,7 @@ const Login: React.FC = () => {
     setOtpInput('');
     setError('');
     setIsLoading(true);
-    
+
     try {
       await requestOtpFromBackend(email);
       showToast('New verification code sent to your email', 'success');
@@ -142,10 +144,19 @@ const Login: React.FC = () => {
     try {
       // Verify OTP with backend
       const result = await verifyOtpWithBackend(email, otpInput);
-      
+
       if (result.success && result.token && result.user) {
+        // Check for multiple roles
+        if (result.user.availableRoles && result.user.availableRoles.length > 1) {
+          setAvailableRoles(result.user.availableRoles);
+          setTempAuthData(result);
+          setStep('ROLE');
+          setIsLoading(false);
+          return;
+        }
+
         showToast('Verification successful. Logging in...', 'success');
-        
+
         // Convert backend user format to frontend User format
         const frontendUser = {
           id: result.user.id?.toString() || email,
@@ -154,10 +165,10 @@ const Login: React.FC = () => {
           role: result.user.role as any, // Backend role should match UserRole enum
           status: result.user.is_active ? 'Active' as const : 'Inactive' as const,
         };
-        
+
         // Login with backend data
         login(email, frontendUser, result.token);
-        
+
         setTimeout(() => {
           navigate('/');
         }, 500);
@@ -173,27 +184,47 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleRoleSelect = (selectedRole: string) => {
+    if (!tempAuthData) return;
+
+    showToast(`Logging in as ${selectedRole}...`, 'success');
+
+    const frontendUser = {
+      id: tempAuthData.user.id?.toString() || email,
+      name: tempAuthData.user.name || email.split('@')[0],
+      email: tempAuthData.user.email || email,
+      role: selectedRole as any,
+      status: tempAuthData.user.is_active ? 'Active' as const : 'Inactive' as const,
+    };
+
+    login(email, frontendUser, tempAuthData.token);
+
+    setTimeout(() => {
+      navigate('/');
+    }, 500);
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
-      
-      <Toast 
-        isVisible={toast.visible} 
-        message={toast.message} 
-        type={toast.type} 
-        onClose={() => setToast(prev => ({ ...prev, visible: false }))} 
+
+      <Toast
+        isVisible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, visible: false }))}
       />
 
       {/* Config Modal */}
-      <Modal 
-        isOpen={isConfigModalOpen} 
-        onClose={() => setIsConfigModalOpen(false)} 
+      <Modal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
         title="Configure Real Email Sending"
       >
         <div className="space-y-4">
           <p className="text-sm text-secondary">
             To make this app send real emails, create a free account at <a href="https://emailjs.com" target="_blank" className="text-blue-500 hover:underline">EmailJS.com</a>.
           </p>
-          
+
           <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[11px] text-blue-400 space-y-1">
             <p className="font-bold">REQUIRED DASHBOARD SETTINGS:</p>
             <ul className="list-disc list-inside space-y-0.5">
@@ -204,25 +235,25 @@ const Login: React.FC = () => {
 
           <div>
             <label className="text-xs font-medium text-secondary block mb-1">Service ID (e.g., service_gmail)</label>
-            <Input 
-              value={emailConfig.serviceId} 
-              onChange={(e) => setEmailConfig({...emailConfig, serviceId: e.target.value})} 
+            <Input
+              value={emailConfig.serviceId}
+              onChange={(e) => setEmailConfig({ ...emailConfig, serviceId: e.target.value })}
               placeholder="service_..."
             />
           </div>
           <div>
             <label className="text-xs font-medium text-secondary block mb-1">Template ID (e.g., template_otp)</label>
-            <Input 
-              value={emailConfig.templateId} 
-              onChange={(e) => setEmailConfig({...emailConfig, templateId: e.target.value})} 
+            <Input
+              value={emailConfig.templateId}
+              onChange={(e) => setEmailConfig({ ...emailConfig, templateId: e.target.value })}
               placeholder="template_..."
             />
           </div>
           <div>
             <label className="text-xs font-medium text-secondary block mb-1">Public Key (User ID)</label>
-            <Input 
-              value={emailConfig.publicKey} 
-              onChange={(e) => setEmailConfig({...emailConfig, publicKey: e.target.value})} 
+            <Input
+              value={emailConfig.publicKey}
+              onChange={(e) => setEmailConfig({ ...emailConfig, publicKey: e.target.value })}
               placeholder="user_..."
             />
           </div>
@@ -243,33 +274,33 @@ const Login: React.FC = () => {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        
+
         {/* Top Controls */}
         <div className="absolute top-0 right-0 -mt-16 flex gap-3">
-          <button 
-             onClick={() => setIsConfigModalOpen(true)}
-             className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-all ${isConfigSaved ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-surface border-border text-secondary hover:text-primary'}`}
+          <button
+            onClick={() => setIsConfigModalOpen(true)}
+            className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-all ${isConfigSaved ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-surface border-border text-secondary hover:text-primary'}`}
           >
-             {isConfigSaved ? <CheckCircle size={14} /> : <Settings size={14} />}
-             {isConfigSaved ? 'Email Active' : 'Setup Email'}
+            {isConfigSaved ? <CheckCircle size={14} /> : <Settings size={14} />}
+            {isConfigSaved ? 'Email Active' : 'Setup Email'}
           </button>
-          <button 
-             onClick={toggleTheme}
-             className="p-1.5 text-secondary hover:text-primary transition-colors"
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 text-secondary hover:text-primary transition-colors"
           >
-             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
 
         <div className="text-center mb-8">
-           <div className="w-12 h-12 bg-primary text-background rounded-xl mx-auto flex items-center justify-center shadow-lg mb-4">
-              <span className="font-bold text-2xl tracking-tighter">A</span>
-           </div>
-           <h1 className="text-2xl font-bold text-primary tracking-tight">AIMS Portal</h1>
-           <p className="text-secondary text-sm mt-1">Academic Information Management System</p>
+          <div className="w-12 h-12 bg-primary text-background rounded-xl mx-auto flex items-center justify-center shadow-lg mb-4">
+            <span className="font-bold text-2xl tracking-tighter">A</span>
+          </div>
+          <h1 className="text-2xl font-bold text-primary tracking-tight">AIMS Portal</h1>
+          <p className="text-secondary text-sm mt-1">Academic Information Management System</p>
         </div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl"
@@ -294,8 +325,8 @@ const Login: React.FC = () => {
                     <label className="text-xs font-medium text-secondary uppercase tracking-wide">Institute Email</label>
                     <div className="relative group">
                       <Mail className="absolute left-3 top-3 text-secondary group-focus-within:text-blue-500 transition-colors" size={18} />
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="username@iitrpr.ac.in"
@@ -311,15 +342,15 @@ const Login: React.FC = () => {
                     </motion.div>
                   )}
 
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isLoading || !email}
                     className="w-full bg-primary text-background font-medium py-2.5 rounded-xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 mt-2"
                   >
                     {isLoading ? <Loader2 size={18} className="animate-spin" /> : <>Continue <ArrowRight size={18} /></>}
                   </button>
                 </motion.form>
-              ) : (
+              ) : step === 'OTP' ? (
                 <motion.form
                   key="otp-form"
                   initial={{ opacity: 0, x: 20 }}
@@ -328,9 +359,9 @@ const Login: React.FC = () => {
                   onSubmit={handleOtpSubmit}
                   className="space-y-4"
                 >
-                  <button 
-                    type="button" 
-                    onClick={() => { setStep('EMAIL'); setError(''); setToast(prev => ({...prev, visible: false})); }} 
+                  <button
+                    type="button"
+                    onClick={() => { setStep('EMAIL'); setError(''); setToast(prev => ({ ...prev, visible: false })); }}
                     className="text-secondary hover:text-primary text-xs flex items-center gap-1 mb-4 transition-colors"
                   >
                     <ChevronLeft size={14} /> Back to Email
@@ -346,8 +377,8 @@ const Login: React.FC = () => {
 
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-secondary uppercase tracking-wide">6-Digit Code</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={otpInput}
                       onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="000000"
@@ -362,8 +393,8 @@ const Login: React.FC = () => {
                     </div>
                   )}
 
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isLoading || otpInput.length !== 6}
                     className="w-full bg-blue-600 text-white font-medium py-2.5 rounded-xl hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                   >
@@ -371,7 +402,7 @@ const Login: React.FC = () => {
                   </button>
 
                   <div className="text-center">
-                    <button 
+                    <button
                       type="button"
                       disabled={timer > 0}
                       className="text-xs text-secondary hover:text-primary disabled:opacity-50 disabled:hover:text-secondary transition-colors"
@@ -381,10 +412,51 @@ const Login: React.FC = () => {
                     </button>
                   </div>
                 </motion.form>
+              ) : (
+                <motion.div
+                  key="role-form"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center">
+                    <h2 className="text-xl font-bold text-primary">Select Role</h2>
+                    <p className="text-sm text-secondary mt-1">You hold multiple positions. How would you like to sign in?</p>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {availableRoles.map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => handleRoleSelect(role)}
+                        className="w-full p-4 bg-surface border border-border rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left flex items-center gap-4 group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          {role === 'ADVISOR' ? <ShieldCheck size={20} /> :
+                            role === 'INSTRUCTOR' ? <Briefcase size={20} /> :
+                              role === 'STUDENT' ? <GraduationCap size={20} /> : <User size={20} />}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-primary">{role}</div>
+                          <div className="text-xs text-secondary">Sign in to your {role.toLowerCase()} dashboard</div>
+                        </div>
+                        <ArrowRight size={16} className="ml-auto text-secondary opacity-0 group-hover:opacity-100 transition-all" />
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => { setStep('OTP'); setError(''); }}
+                    className="w-full text-secondary hover:text-primary text-xs flex items-center justify-center gap-1 transition-colors"
+                  >
+                    <ChevronLeft size={14} /> Back to OTP
+                  </button>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
-          
+
           <div className="px-8 py-4 bg-glass border-t border-border flex justify-between items-center text-[10px] text-secondary">
             <span>IIT Ropar © 2024</span>
             <div className="flex gap-3">

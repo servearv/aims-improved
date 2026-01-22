@@ -9,13 +9,14 @@ interface AppState {
   token: string | null;
   courses: Course[];
   requests: RegistrationRequest[];
-  
+
   // Actions
+  init: () => void;
   toggleTheme: () => void;
   login: (email: string, user?: User, token?: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
-  
+
   // Registration Actions
   addRequest: (courseId: string) => void;
   updateRequestStatus: (requestId: string, newStatus: RegistrationStatus) => void;
@@ -29,6 +30,41 @@ export const useAppStore = create<AppState>((set, get) => ({
   courses: MOCK_COURSES,
   requests: INITIAL_REQUESTS,
 
+  init: () => {
+    // Sync across tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        if (!e.newValue) {
+          set({ isAuthenticated: false, token: null });
+        } else {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            set({
+              isAuthenticated: true,
+              token: e.newValue,
+              currentUser: JSON.parse(userStr)
+            });
+          }
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Initial load
+    const token = localStorage.getItem('auth_token');
+    const userStr = localStorage.getItem('user');
+    if (token && userStr) {
+      set({
+        isAuthenticated: true,
+        token,
+        currentUser: JSON.parse(userStr)
+      });
+    }
+
+    // Return cleanup (though in this singleton store it's usually fine)
+    return () => window.removeEventListener('storage', handleStorageChange);
+  },
+
   toggleTheme: () => {
     set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' }));
   },
@@ -36,8 +72,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   login: (email: string, user?: User, token?: string) => {
     if (user && token) {
       // Backend authentication - use actual user data
-      set({ 
-        isAuthenticated: true, 
+      set({
+        isAuthenticated: true,
         currentUser: user,
         token: token
       });
@@ -47,7 +83,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     } else {
       // Fallback to mock logic for demo
       let userToSet = MOCK_USERS.student;
-      
+
       if (email.includes('prof') || email.includes('dr')) {
         userToSet = MOCK_USERS.instructor;
       } else if (email.includes('advisor')) {
@@ -56,29 +92,39 @@ export const useAppStore = create<AppState>((set, get) => ({
         userToSet = MOCK_USERS.admin;
       }
 
-      set({ 
-        isAuthenticated: true, 
-        currentUser: { ...userToSet, email: email },
+      const finalUser = { ...userToSet, email: email, availableRoles: [userToSet.role] };
+
+      set({
+        isAuthenticated: true,
+        currentUser: finalUser,
         token: null
       });
+      localStorage.setItem('user', JSON.stringify(finalUser));
     }
   },
 
   logout: () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
-    set({ 
+    set({
       isAuthenticated: false,
       token: null
     });
   },
 
   switchRole: (role) => {
-    let newUser = MOCK_USERS.student;
-    if (role === UserRole.INSTRUCTOR) newUser = MOCK_USERS.instructor;
-    if (role === UserRole.ADVISOR) newUser = MOCK_USERS.advisor;
-    if (role === UserRole.ADMIN) newUser = MOCK_USERS.admin;
-    set({ currentUser: newUser });
+    const { currentUser } = get();
+    // Only allow switching if the role is available to this user
+    if (currentUser.availableRoles && !currentUser.availableRoles.includes(role)) {
+      console.warn(`Unauthorized role switch attempt to ${role}`);
+      return;
+    }
+
+    set((state) => ({
+      currentUser: { ...state.currentUser, role }
+    }));
+    // Sync to localStorage so other tabs know the current role
+    localStorage.setItem('user', JSON.stringify({ ...currentUser, role }));
   },
 
   addRequest: (courseId) => {
@@ -106,9 +152,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateRequestStatus: (requestId, newStatus) => {
     set((state) => ({
-      requests: state.requests.map(r => 
+      requests: state.requests.map(r =>
         r.id === requestId ? { ...r, status: newStatus } : r
       )
     }));
   }
 }));
+
+// Initialize store immediately to recover session before first render
+useAppStore.getState().init();

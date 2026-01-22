@@ -40,12 +40,12 @@ const App: React.FC = () => {
     <HashRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        
+
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
-            
+
             {/* Academic Routes */}
             <Route path="academics">
               <Route path="registration" element={<Registration />} />

@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import { mailer } from "./utils/mailer.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import studentRoutes from "./modules/student/student.routes.js";
+import courseRoutes from "./modules/course/course.routes.js";
 
 dotenv.config();
 
@@ -46,6 +48,8 @@ app.get("/health", (req, res) => {
  */
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
+app.use("/student", studentRoutes);
+app.use("/courses", courseRoutes);
 
 /**
  * Global error handler (optional but recommended)

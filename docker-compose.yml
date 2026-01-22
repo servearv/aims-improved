@@ -34,7 +34,7 @@ services:
       - DB_NAME=${DB_NAME:-aims_db}
       - PORT=8080
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
-      - NODE_ENV=${NODE_ENV:-production}
+      - NODE_ENV=development
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-}
       - SMTP_USER=${SMTP_USER:-}
