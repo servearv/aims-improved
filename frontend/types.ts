@@ -26,6 +26,7 @@ export interface User {
   avatarUrl?: string;
   status?: 'Active' | 'Inactive';
   department?: string;
+  availableRoles?: UserRole[];
 }
 
 export interface Course {
@@ -37,7 +38,7 @@ export interface Course {
   instructorName: string;
   schedule: string;
   department?: string;
-  ltp?: string; 
+  ltp?: string;
   session?: string;
   status?: 'Offered' | 'Withdrawn' | 'Proposed';
 }

@@ -6,7 +6,6 @@ A comprehensive university management system with frontend and backend services.
 
 - **frontend/**: React + TypeScript frontend application
 - **backend/**: Node.js + Express backend API
-- **java_backend/**: Java Spring Boot backend (alternative)
 
 ## Quick Start
 

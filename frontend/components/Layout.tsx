@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  GraduationCap, 
-  CalendarDays, 
-  CreditCard, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  GraduationCap,
+  CalendarDays,
+  CreditCard,
+  Settings,
+  LogOut,
   Bell,
   Menu,
   Search,
@@ -33,7 +33,7 @@ import CommandPalette from './CommandPalette';
 
 const Layout: React.FC = () => {
   const { currentUser, switchRole, logout, theme, toggleTheme } = useAppStore();
-  
+
   // UI States
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -106,7 +106,7 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-primary flex overflow-hidden font-sans selection:bg-blue-500/30 transition-colors duration-300">
-      
+
       {/* Global Overlays */}
       <GeminiAssistant isOpen={isAssistantOpen} onClose={() => setIsAssistantOpen(false)} />
       <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
@@ -121,61 +121,67 @@ const Layout: React.FC = () => {
             AIMS Portal
           </span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden ml-auto text-secondary">
-             <Menu size={20} />
+            <Menu size={20} />
           </button>
         </div>
 
         <div className="p-4 flex-1 overflow-y-auto h-[calc(100vh-8rem)]">
-           {/* Role Switcher for Demo */}
-           <div className="mb-8">
-             <div className="px-3 mb-2 flex items-center justify-between">
-               <label className="text-[10px] font-semibold text-secondary uppercase tracking-wider">Stakeholder View</label>
-             </div>
-             <div className="relative group">
-               <select 
-                 className="w-full appearance-none bg-surface border border-border rounded-xl px-4 py-2.5 text-xs text-primary outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-glass"
-                 value={currentUser.role}
-                 onChange={(e) => switchRole(e.target.value as UserRole)}
-               >
-                 <option value={UserRole.STUDENT}>Student Account</option>
-                 <option value={UserRole.INSTRUCTOR}>Faculty Instructor</option>
-                 <option value={UserRole.ADVISOR}>Faculty Advisor</option>
-                 <option value={UserRole.ADMIN}>Administrator</option>
-               </select>
-               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">
-                 <Settings size={12} />
-               </div>
-             </div>
-           </div>
+          {/* Role Switcher for Authorized Users */}
+          {currentUser.availableRoles && currentUser.availableRoles.length > 1 && (
+            <div className="mb-8">
+              <div className="px-3 mb-2 flex items-center justify-between">
+                <label className="text-[10px] font-semibold text-secondary uppercase tracking-wider">Stakeholder View</label>
+              </div>
+              <div className="relative group">
+                <select
+                  className="w-full appearance-none bg-surface border border-border rounded-xl px-4 py-2.5 text-xs text-primary outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-glass"
+                  value={currentUser.role}
+                  onChange={(e) => switchRole(e.target.value as UserRole)}
+                >
+                  {currentUser.availableRoles.map(role => (
+                    <option key={role} value={role}>
+                      {role === UserRole.STUDENT ? 'Student Account' :
+                        role === UserRole.INSTRUCTOR ? 'Faculty Instructor' :
+                          role === UserRole.ADVISOR ? 'Faculty Advisor' :
+                            role === UserRole.ADMIN ? 'Administrator' : role}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">
+                  <Settings size={12} />
+                </div>
+              </div>
+            </div>
+          )}
 
-           <div className="px-3 mb-2">
-             <label className="text-[10px] font-semibold text-secondary uppercase tracking-wider">Main Menu</label>
-           </div>
-           <nav className="space-y-1">
-             {navItems.map((item) => (
-               <NavLink
-                 key={item.path}
-                 to={item.path}
-                 onClick={() => setIsMobileMenuOpen(false)}
-                 className={({ isActive }) => `
+          <div className="px-3 mb-2">
+            <label className="text-[10px] font-semibold text-secondary uppercase tracking-wider">Main Menu</label>
+          </div>
+          <nav className="space-y-1">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) => `
                    group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent
-                   ${isActive 
-                     ? 'bg-glass text-primary border-glassBorder shadow-sm' 
-                     : 'text-secondary hover:text-primary hover:bg-glass'}
+                   ${isActive
+                    ? 'bg-glass text-primary border-glassBorder shadow-sm'
+                    : 'text-secondary hover:text-primary hover:bg-glass'}
                  `}
-               >
-                 {({ isActive }) => (
-                   <>
-                     <item.icon size={18} className={isActive ? "text-blue-500" : "text-secondary group-hover:text-primary"} />
-                     {item.label}
-                     {isActive && (
-                       <ChevronRight size={14} className="ml-auto text-secondary" />
-                     )}
-                   </>
-                 )}
-               </NavLink>
-             ))}
-           </nav>
+              >
+                {({ isActive }) => (
+                  <>
+                    <item.icon size={18} className={isActive ? "text-blue-500" : "text-secondary group-hover:text-primary"} />
+                    {item.label}
+                    {isActive && (
+                      <ChevronRight size={14} className="ml-auto text-secondary" />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
         </div>
 
         <div className="absolute bottom-0 left-0 w-full p-4 border-t border-border bg-background">
@@ -189,7 +195,7 @@ const Layout: React.FC = () => {
               <p className="text-xs text-secondary truncate capitalize">{currentUser.role.toLowerCase()}</p>
             </div>
             <button onClick={logout} className="p-1 hover:bg-glass rounded-lg transition-colors" title="Log Out">
-               <LogOut size={16} className="text-secondary hover:text-red-500 transition-colors" />
+              <LogOut size={16} className="text-secondary hover:text-red-500 transition-colors" />
             </button>
           </div>
         </div>
@@ -200,61 +206,61 @@ const Layout: React.FC = () => {
         {/* Top Header */}
         <header className="h-16 border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-20 flex items-center justify-between px-6 md:px-8 transition-colors duration-300">
           <div className="flex items-center gap-4 flex-1">
-             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-secondary hover:text-primary">
-               <Menu size={20} />
-             </button>
-             
-             {/* Command Palette Trigger */}
-             <div 
-               onClick={() => setIsPaletteOpen(true)}
-               className="hidden md:flex items-center gap-3 px-3 py-2 rounded-lg bg-surface border border-border text-secondary text-sm w-full max-w-md cursor-pointer hover:border-glassBorder hover:text-primary transition-all group"
-             >
-               <Search size={14} className="text-secondary group-hover:text-primary" />
-               <span>Search...</span>
-               <div className="ml-auto flex gap-1">
-                 <span className="text-[10px] bg-glass px-1.5 py-0.5 rounded border border-glassBorder">⌘</span>
-                 <span className="text-[10px] bg-glass px-1.5 py-0.5 rounded border border-glassBorder">K</span>
-               </div>
-             </div>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-secondary hover:text-primary">
+              <Menu size={20} />
+            </button>
+
+            {/* Command Palette Trigger */}
+            <div
+              onClick={() => setIsPaletteOpen(true)}
+              className="hidden md:flex items-center gap-3 px-3 py-2 rounded-lg bg-surface border border-border text-secondary text-sm w-full max-w-md cursor-pointer hover:border-glassBorder hover:text-primary transition-all group"
+            >
+              <Search size={14} className="text-secondary group-hover:text-primary" />
+              <span>Search...</span>
+              <div className="ml-auto flex gap-1">
+                <span className="text-[10px] bg-glass px-1.5 py-0.5 rounded border border-glassBorder">⌘</span>
+                <span className="text-[10px] bg-glass px-1.5 py-0.5 rounded border border-glassBorder">K</span>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 ml-4">
-             {currentUser.role === UserRole.ADMIN && (
-               <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-red-500/10 text-red-500 rounded-full border border-red-500/20 text-xs font-bold uppercase tracking-wider">
-                 <ShieldAlert size={12} /> Admin Mode
-               </div>
-             )}
-            
-             <button 
-               onClick={() => setIsAssistantOpen(true)}
-               className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full text-xs font-medium shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
-             >
-               <Sparkles size={14} />
-               <span className="hidden sm:inline">Ask AI</span>
-             </button>
+            {currentUser.role === UserRole.ADMIN && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-red-500/10 text-red-500 rounded-full border border-red-500/20 text-xs font-bold uppercase tracking-wider">
+                <ShieldAlert size={12} /> Admin Mode
+              </div>
+            )}
 
-             <div className="h-6 w-px bg-border mx-1"></div>
+            <button
+              onClick={() => setIsAssistantOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full text-xs font-medium shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
+            >
+              <Sparkles size={14} />
+              <span className="hidden sm:inline">Ask AI</span>
+            </button>
 
-             <button 
-               onClick={toggleTheme}
-               className="p-2 text-secondary hover:text-primary hover:bg-glass rounded-full transition-colors"
-               title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-             >
-               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-             </button>
-             
-             <button className="relative p-2 text-secondary hover:text-primary hover:bg-glass rounded-full transition-colors">
-               <Bell size={18} />
-               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
-             </button>
+            <div className="h-6 w-px bg-border mx-1"></div>
+
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-secondary hover:text-primary hover:bg-glass rounded-full transition-colors"
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
+            <button className="relative p-2 text-secondary hover:text-primary hover:bg-glass rounded-full transition-colors">
+              <Bell size={18} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+            </button>
           </div>
         </header>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
-           <div className="max-w-7xl mx-auto">
-             <Outlet />
-           </div>
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>

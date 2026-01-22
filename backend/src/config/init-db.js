@@ -13,13 +13,13 @@ export async function initDatabase() {
   try {
     // Wait for database to be ready first
     await waitForDatabase();
-    
+
     const schemaPath = path.join(__dirname, '../../schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
-    
+
     await pool.query(schema);
     console.log('✅ Database schema initialized successfully');
-    
+
     // Check if we need to create a default admin user
     const userCheck = await pool.query('SELECT COUNT(*) FROM users');
     if (parseInt(userCheck.rows[0].count) === 0 && process.env.DEFAULT_ADMIN_EMAIL) {

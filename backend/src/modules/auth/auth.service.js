@@ -3,14 +3,15 @@ import { mailer } from "../../utils/mailer.js";
 import { saveOtp, findOtp, deleteOtp, incrementAttempts } from "../../models/otp.model.js";
 import { findUserByEmail } from "../../models/user.model.js";
 import { signToken } from "../../utils/jwt.js";
+import pool from "../../config/db.js";
 
 export const requestOtpService = async (email) => {
   const user = await findUserByEmail(email);
-  
+
   if (!user) {
     throw new Error("This email address is not registered. Please contact an administrator to create an account.");
   }
-  
+
   if (!user.is_active) {
     throw new Error("Account is inactive. Please contact support.");
   }
@@ -59,17 +60,31 @@ export const verifyOtpService = async (email, otp) => {
   }
 
   const user = await findUserByEmail(email);
+
+  // Detect available roles
+  const availableRoles = [user.role];
+  if (user.role === 'ADVISOR' && !availableRoles.includes('INSTRUCTOR')) {
+    availableRoles.push('INSTRUCTOR');
+  } else if (user.role === 'INSTRUCTOR') {
+    // Check if they are also an advisor
+    const isAdvisor = await pool.query('SELECT 1 FROM faculty_advisors WHERE email = $1', [email]);
+    if (isAdvisor.rowCount > 0 && !availableRoles.includes('ADVISOR')) {
+      availableRoles.push('ADVISOR');
+    }
+  }
+
   const token = signToken(user);
 
   await deleteOtp(email);
 
   // Return user data in a clean format
-  return { 
-    token, 
+  return {
+    token,
     user: {
       id: user.id,
       email: user.email,
       role: user.role,
+      availableRoles: availableRoles,
       is_active: user.is_active,
       name: user.email.split('@')[0] // Use email prefix as name if name field doesn't exist
     }
