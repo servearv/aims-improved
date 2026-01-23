@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/ui';
-import { Clock, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import { getTimetable } from '../../utils/api';
 
 const TimeTable: React.FC = () => {
+  const [schedule, setSchedule] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const slots = [
     { time: '09:00', label: '9:00 - 10:00' },
@@ -15,29 +20,49 @@ const TimeTable: React.FC = () => {
     { time: '16:00', label: '4:00 - 5:00' },
   ];
 
-  // Mock schedule data
-  const schedule: any = {
-    'Monday': {
-      '09:00': { code: 'CS301', title: 'OS', type: 'Lecture', room: 'L1' },
-      '11:00': { code: 'CS302', title: 'Networks', type: 'Lecture', room: 'L2' }
-    },
-    'Tuesday': {
-      '10:00': { code: 'MA102', title: 'Lin. Alg', type: 'Lecture', room: 'L1' },
-      '14:00': { code: 'CS391', title: 'OS Lab', type: 'Lab', room: 'Lab 2', duration: 3 }
-    },
-    'Wednesday': {
-      '09:00': { code: 'CS301', title: 'OS', type: 'Lecture', room: 'L1' },
-      '11:00': { code: 'CS302', title: 'Networks', type: 'Lecture', room: 'L2' }
-    },
-    'Thursday': {
-      '10:00': { code: 'MA102', title: 'Lin. Alg', type: 'Lecture', room: 'L1' },
-      '15:00': { code: 'HU301', title: 'Ethics', type: 'Lecture', room: 'L3' }
-    },
-    'Friday': {
-      '09:00': { code: 'CS305', title: 'Software Eng', type: 'Lecture', room: 'L2' },
-      '11:00': { code: 'CS302', title: 'Networks', type: 'Tutorial', room: 'T1' }
-    }
-  };
+  useEffect(() => {
+    const fetchTimetable = async () => {
+      try {
+        setLoading(true);
+        const data = await getTimetable();
+        const newSchedule: any = {};
+
+        data.forEach((item: any) => {
+          const day = item.day_of_week;
+          const time = item.start_time.substring(0, 5);
+
+          if (!newSchedule[day]) newSchedule[day] = {};
+
+          let duration = 1;
+          if (item.end_time) {
+            const startH = parseInt(item.start_time.split(':')[0]);
+            const endH = parseInt(item.end_time.split(':')[0]);
+            duration = endH - startH;
+          }
+
+          newSchedule[day][time] = {
+            code: item.code,
+            title: item.title,
+            type: item.type,
+            room: item.room,
+            duration: duration > 0 ? duration : 1
+          };
+        });
+
+        setSchedule(newSchedule);
+      } catch (err: any) {
+        console.error("Failed to fetch timetable", err);
+        setError(err.message || "Failed to load timetable");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTimetable();
+  }, []);
+
+  if (loading) return <div className="text-white p-6">Loading timetable...</div>;
+  if (error) return <div className="text-red-500 p-6">Error: {error}</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -46,58 +71,87 @@ const TimeTable: React.FC = () => {
         <p className="text-gray-400 text-sm">Spring Semester 2024</p>
       </div>
 
-      <div className="grid grid-cols-1 overflow-x-auto pb-4">
-        <div className="min-w-[800px]">
-          {/* Header */}
-          <div className="grid grid-cols-6 gap-4 mb-4">
-            <div className="p-3 text-center text-gray-500 text-sm font-medium">Time / Day</div>
-            {days.map(day => (
-              <div key={day} className="p-3 text-center text-white font-semibold bg-white/5 rounded-lg border border-white/5">
-                {day}
+      <div className="overflow-x-auto pb-4">
+        <div className="min-w-[800px] grid grid-cols-6 gap-4">
+          {/* Header Row */}
+          <div className="p-3 text-center text-gray-500 text-sm font-medium">Time / Day</div>
+          {days.map(day => (
+            <div key={day} className="p-3 text-center text-white font-semibold bg-white/5 rounded-lg border border-white/5">
+              {day}
+            </div>
+          ))}
+
+          {/* Slots Rows */}
+          {slots.map((slot) => (
+            <React.Fragment key={slot.time}>
+              {/* Time Column */}
+              <div className="flex items-center justify-center text-xs text-gray-500 font-medium bg-[#18181b] rounded-lg border border-dashed border-white/10 min-h-[80px]">
+                {slot.label}
               </div>
-            ))}
-          </div>
 
-          {/* Slots */}
-          <div className="space-y-4">
-            {slots.map((slot) => (
-              <div key={slot.time} className="grid grid-cols-6 gap-4">
-                {/* Time Column */}
-                <div className="flex items-center justify-center text-xs text-gray-500 font-medium bg-[#18181b] rounded-lg border border-dashed border-white/10">
-                  {slot.label}
+              {/* Day Columns */}
+              {slot.type === 'break' ? (
+                <div className="col-span-5 bg-white/[0.02] rounded-lg border border-white/5 flex items-center justify-center text-gray-600 text-xs uppercase tracking-widest font-medium min-h-[80px]">
+                  Lunch Break
                 </div>
+              ) : (
+                days.map((day) => {
+                  const classInfo = schedule[day]?.[slot.time];
 
-                {/* Days Columns */}
-                {slot.type === 'break' ? (
-                  <div className="col-span-5 bg-white/[0.02] rounded-lg border border-white/5 flex items-center justify-center text-gray-600 text-xs uppercase tracking-widest font-medium">
-                    Lunch Break
-                  </div>
-                ) : (
-                  days.map((day) => {
-                    const classInfo = schedule[day]?.[slot.time];
-                    if (!classInfo && schedule[day]?.['14:00']?.duration === 3 && (slot.time === '15:00' || slot.time === '16:00') && day === 'Tuesday') {
-                       // Skip rendering for multi-hour lab overlap (basic hack for demo)
-                       return <div key={day} className="hidden"></div>;
+                  // Check if this cell is covered by a previous row-spanning cell
+                  // We need to check if ANY slot before this one on the same day has a duration that covers current slot.
+                  // Iterating all previous slots for this day is costly inside render? 
+                  // Given max 8 slots, it's fine.
+                  let hidden = false;
+                  slots.forEach(s => {
+                    if (s.time < slot.time && s.type !== 'break') {
+                      const prevClass = schedule[day]?.[s.time];
+                      if (prevClass && prevClass.duration > 1) {
+                        const startH = parseInt(s.time.split(':')[0]);
+                        const currentH = parseInt(slot.time.split(':')[0]);
+                        if (currentH < startH + prevClass.duration) {
+                          hidden = true;
+                        }
+                      }
                     }
-                    if (day === 'Tuesday' && slot.time === '14:00' && classInfo?.duration) {
-                        // Render Lab spanning 3 rows
-                        return (
-                            <div key={day} className="row-span-3 h-[250px] relative z-10">
-                                <ClassCard info={classInfo} />
-                            </div>
-                        )
-                    }
+                  });
 
+                  if (hidden) return null; // Don't render anything, grid flow handles it? 
+                  // NO! If we return null, the grid cells shift! We must effectively "skip" this cell but we can't just skip in CSS Grid if auto-placement is on.
+                  // Actually, if we use `row-span`, the browser automatically places the next cell in the next available slot.
+                  // So if a previous cell spans 3 rows, in the next row, that column is occupied, so the NEXT child (which would be this day's cell) 
+                  // would be placed in the NEXT column? NO.
+                  // We explicitly map `days.map`. We create 5 div elements.
+                  // If Monday 14:00 spans 3 rows.
+                  // The grid has 6 columns.
+                  // Row 15:00 starts.
+                  // Time Label (col 1).
+                  // Monday (col 2) is occupied by the span? Yes.
+                  // So the next child we output (for Monday 15:00) will be placed in Col 3 (Tuesday)?
+                  // YES, that's how Implicit Grid works!
+                  // So if `hidden` is true, we should NOT output an element at all.
+
+                  if (hidden) return null;
+
+                  if (classInfo) {
                     return (
-                      <div key={day} className="min-h-[80px]">
-                        {classInfo && <ClassCard info={classInfo} />}
+                      <div
+                        key={`${day}-${slot.time}`}
+                        className={`min-h-[80px] relative z-10 ${classInfo.duration > 1 ? `row-span-${classInfo.duration}` : ''}`}
+                        style={classInfo.duration > 1 ? { gridRow: `span ${classInfo.duration}` } : {}}
+                      >
+                        <ClassCard info={classInfo} />
                       </div>
                     );
-                  })
-                )}
-              </div>
-            ))}
-          </div>
+                  }
+
+                  return (
+                    <div key={`${day}-${slot.time}`} className="min-h-[80px] rounded-lg border border-white/[0.02]"></div>
+                  );
+                })
+              )}
+            </React.Fragment>
+          ))}
         </div>
       </div>
     </div>
@@ -107,9 +161,8 @@ const TimeTable: React.FC = () => {
 const ClassCard = ({ info }: { info: any }) => {
   const isLab = info.type === 'Lab';
   return (
-    <Card className={`h-full p-3 flex flex-col justify-between border-l-4 hover:brightness-110 transition-all cursor-pointer ${
-      isLab ? 'border-l-purple-500 bg-purple-500/10 border-purple-500/20' : 'border-l-blue-500 bg-blue-500/10 border-blue-500/20'
-    }`}>
+    <Card className={`h-full p-3 flex flex-col justify-between border-l-4 hover:brightness-110 transition-all cursor-pointer ${isLab ? 'border-l-purple-500 bg-purple-500/10 border-purple-500/20' : 'border-l-blue-500 bg-blue-500/10 border-blue-500/20'
+      }`}>
       <div>
         <div className="flex justify-between items-start mb-1">
           <span className="text-xs font-bold text-white">{info.code}</span>

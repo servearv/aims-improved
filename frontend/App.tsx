@@ -15,6 +15,9 @@ import AcademicEvents from './pages/Academics/AcademicEvents';
 import CoursesOffered from './pages/Academics/CoursesOffered';
 import UserManagement from './pages/Admin/UserManagement';
 import GradingPortal from './pages/Faculty/GradingPortal';
+import OfferedCoursesGrid from './pages/Faculty/OfferedCoursesGrid';
+import CourseOfferingDetails from './pages/Faculty/CourseOfferingDetails';
+import UploadGrades from './pages/Faculty/UploadGrades';
 import AdviseeList from './pages/Advisor/AdviseeList';
 import { useAppStore } from './store';
 
@@ -64,6 +67,10 @@ const App: React.FC = () => {
             {/* Faculty Routes */}
             <Route path="faculty">
               <Route path="grading" element={<GradingPortal />} />
+              <Route path="offerings" element={<OfferedCoursesGrid />} />
+              <Route path="offerings/new" element={<CourseOfferingDetails />} />
+              <Route path="offerings/:id" element={<CourseOfferingDetails />} />
+              <Route path="grades/upload" element={<UploadGrades />} />
             </Route>
 
             {/* Advisor Routes */}

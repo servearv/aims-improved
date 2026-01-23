@@ -112,3 +112,33 @@ export const getCourseEnrollments = async (courseId, semester = null) => {
   return result.rows;
 };
 
+export const deleteEnrollment = async (id, studentEmail = null) => {
+  // If studentEmail is provided, verify ownership
+  if (studentEmail) {
+    const check = await pool.query(
+      'SELECT * FROM student_courses WHERE id = $1 AND student_email = $2',
+      [id, studentEmail]
+    );
+    if (check.rowCount === 0) {
+      throw new Error('Enrollment not found or not authorized');
+    }
+  }
+
+  const result = await pool.query(
+    'DELETE FROM student_courses WHERE id = $1 RETURNING *',
+    [id]
+  );
+  return result.rows[0];
+};
+
+export const getEnrollmentById = async (id) => {
+  const result = await pool.query(
+    `SELECT sc.*, c.title as course_title, c.credits as course_credits
+     FROM student_courses sc
+     JOIN courses c ON sc.course_id = c.course_id
+     WHERE sc.id = $1`,
+    [id]
+  );
+  return result.rows[0];
+};
+

@@ -72,7 +72,10 @@ const Layout: React.FC = () => {
         return [
           { label: 'Faculty Dashboard', icon: LayoutDashboard, path: '/' },
           { label: 'My Courses', icon: BookOpen, path: '/academics/courses-offered' },
+          { label: 'Offered Courses', icon: ListFilter, path: '/faculty/offerings' },
+          { label: 'Offer a Course', icon: GraduationCap, path: '/faculty/offerings/new' },
           { label: 'Grading Portal', icon: ClipboardCheck, path: '/faculty/grading' },
+          { label: 'Upload Grades', icon: FileBarChart, path: '/faculty/grades/upload' },
           { label: 'Student Approvals', icon: FileBarChart, path: '/academics/registration' },
           { label: 'Schedule', icon: CalendarDays, path: '/academics/timetable' },
           ...common
@@ -81,6 +84,8 @@ const Layout: React.FC = () => {
         return [
           { label: 'Advisor Dashboard', icon: LayoutDashboard, path: '/' },
           { label: 'Advisee List', icon: Users, path: '/advisor/advisees' },
+          { label: 'Offered Courses', icon: ListFilter, path: '/faculty/offerings' },
+          { label: 'Offer a Course', icon: GraduationCap, path: '/faculty/offerings/new' },
           { label: 'Registration Approval', icon: ClipboardCheck, path: '/academics/registration' },
           { label: 'Degree Audit', icon: GraduationCap, path: '/advisor/audit' },
           ...common

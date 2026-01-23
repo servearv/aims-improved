@@ -1,5 +1,6 @@
 import { listCourses, findCourseById, createCourse, updateCourse } from '../../models/course.model.js';
-import { enrollStudent, getCourseEnrollments, enrollBatch, updateEnrollment } from '../../models/enrollment.model.js';
+import { enrollStudent, getCourseEnrollments, enrollBatch, updateEnrollment, deleteEnrollment, getEnrollmentById } from '../../models/enrollment.model.js';
+import { getInstructorCourses } from '../../models/instructor.model.js';
 import pool from '../../config/db.js';
 
 export const getAllCourses = async (req, res) => {
@@ -157,9 +158,9 @@ export const getRegistrationRequests = async (req, res) => {
 export const updateRegistrationStatusHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, grade, gradePoints, creditsEarned } = req.body;
 
-    const enrollment = await updateEnrollment(id, { status });
+    const enrollment = await updateEnrollment(id, { status, grade, gradePoints, creditsEarned });
 
     if (!enrollment) {
       return res.status(404).json({ error: 'Enrollment record not found' });
@@ -168,6 +169,148 @@ export const updateRegistrationStatusHandler = async (req, res) => {
     res.json({ enrollment });
   } catch (err) {
     console.error('Error updating registration status:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const dropCourseHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userEmail = req.user.email;
+    const userRole = req.user.role;
+
+    // Admin can delete any, students can only delete their own
+    const isAdmin = userRole === 'ADMIN';
+
+    const enrollment = await deleteEnrollment(
+      parseInt(id),
+      isAdmin ? null : userEmail
+    );
+
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    res.json({
+      message: 'Course dropped successfully',
+      enrollment
+    });
+  } catch (err) {
+    console.error('Error dropping course:', err);
+    if (err.message.includes('not authorized')) {
+      return res.status(403).json({ error: err.message });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Get courses taught by the current instructor
+ */
+export const getInstructorCoursesHandler = async (req, res) => {
+  try {
+    const email = req.user.email;
+    const courses = await getInstructorCourses(email);
+    res.json({ courses });
+  } catch (err) {
+    console.error('Error getting instructor courses:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Grade to grade points mapping
+const gradePointMap = {
+  'A+': 10.0, 'A': 10.0, 'A-': 9.0,
+  'B+': 8.0, 'B': 8.0, 'B-': 7.0,
+  'C+': 6.0, 'C': 6.0, 'C-': 5.0,
+  'D': 4.0, 'E': 0.0, 'F': 0.0,
+  'S': null, 'X': null, 'I': null, 'W': null
+};
+
+/**
+ * Bulk upload grades for a course
+ * Expects: { grades: [{ entryNo: string, grade: string }, ...] }
+ */
+export const uploadBulkGradesHandler = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { grades, semester } = req.body;
+
+    if (!grades || !Array.isArray(grades)) {
+      return res.status(400).json({ error: 'grades array is required' });
+    }
+
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    for (const gradeEntry of grades) {
+      try {
+        const { entryNo, grade } = gradeEntry;
+
+        if (!entryNo || !grade) {
+          results.failed.push({ entryNo, error: 'Missing entryNo or grade' });
+          continue;
+        }
+
+        // Find student by entry number
+        const studentResult = await pool.query(
+          'SELECT email FROM students WHERE entry_no = $1',
+          [entryNo]
+        );
+
+        if (studentResult.rowCount === 0) {
+          results.failed.push({ entryNo, error: 'Student not found' });
+          continue;
+        }
+
+        const studentEmail = studentResult.rows[0].email;
+
+        // Find enrollment for this course
+        let enrollmentQuery = `
+          SELECT id FROM student_courses 
+          WHERE student_email = $1 AND course_id = $2
+        `;
+        const params = [studentEmail, courseId];
+
+        if (semester) {
+          enrollmentQuery += ` AND semester = $3`;
+          params.push(semester);
+        }
+
+        enrollmentQuery += ` LIMIT 1`;
+
+        const enrollmentResult = await pool.query(enrollmentQuery, params);
+
+        if (enrollmentResult.rowCount === 0) {
+          results.failed.push({ entryNo, error: 'Enrollment not found' });
+          continue;
+        }
+
+        const enrollmentId = enrollmentResult.rows[0].id;
+        const gradePoints = gradePointMap[grade.toUpperCase()] !== undefined
+          ? gradePointMap[grade.toUpperCase()]
+          : null;
+
+        // Update the enrollment with grade
+        await updateEnrollment(enrollmentId, {
+          grade: grade.toUpperCase(),
+          gradePoints
+        });
+
+        results.success.push({ entryNo, grade: grade.toUpperCase() });
+      } catch (err) {
+        results.failed.push({ entryNo: gradeEntry.entryNo, error: err.message });
+      }
+    }
+
+    res.json({
+      message: `Processed ${results.success.length} grades successfully, ${results.failed.length} failed`,
+      results
+    });
+  } catch (err) {
+    console.error('Error uploading bulk grades:', err);
     res.status(500).json({ error: err.message });
   }
 };

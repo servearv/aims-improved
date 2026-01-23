@@ -106,6 +106,58 @@ CREATE TABLE IF NOT EXISTS student_records (
     UNIQUE(student_email, semester)
 );
 
+-- Academic Sessions table
+CREATE TABLE IF NOT EXISTS academic_sessions (
+    session_id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    is_current BOOLEAN DEFAULT false,
+    session_type VARCHAR(20) -- 'regular', 'summer'
+);
+
+-- Departments table  
+CREATE TABLE IF NOT EXISTS departments (
+    dept_code VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(200) NOT NULL
+);
+
+-- Course Offerings (links course to session with additional metadata)
+CREATE TABLE IF NOT EXISTS course_offerings (
+    id SERIAL PRIMARY KEY,
+    course_id VARCHAR(50) REFERENCES courses(course_id),
+    session_id VARCHAR(20) REFERENCES academic_sessions(session_id),
+    offering_dept VARCHAR(20) REFERENCES departments(dept_code),
+    section VARCHAR(10),
+    slot_id INTEGER REFERENCES slots(slot_id),
+    status VARCHAR(20) DEFAULT 'Proposed', -- Proposed, Offered, Enrolling, Withdrawn
+    enrolment_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(course_id, session_id, section)
+);
+
+-- Course Instructors (multiple instructors per offering)
+CREATE TABLE IF NOT EXISTS course_instructors (
+    id SERIAL PRIMARY KEY,
+    offering_id INTEGER REFERENCES course_offerings(id) ON DELETE CASCADE,
+    instructor_id VARCHAR(50) REFERENCES instructors(instructor_id),
+    is_coordinator BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(offering_id, instructor_id)
+);
+
+-- Crediting Categorization
+CREATE TABLE IF NOT EXISTS crediting_categorization (
+    id SERIAL PRIMARY KEY,
+    offering_id INTEGER REFERENCES course_offerings(id) ON DELETE CASCADE,
+    degree VARCHAR(50), -- B.Tech, M.Tech, PhD
+    department VARCHAR(20) REFERENCES departments(dept_code),
+    category VARCHAR(50), -- Programme Core, Programme Elec, Open Elec, etc.
+    entry_years TEXT, -- e.g., "2019,2020"
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_email_verifications_expires_at ON email_verifications(expires_at);
@@ -119,3 +171,39 @@ CREATE INDEX IF NOT EXISTS idx_student_courses_course ON student_courses(course_
 CREATE INDEX IF NOT EXISTS idx_student_courses_semester ON student_courses(semester);
 CREATE INDEX IF NOT EXISTS idx_student_records_student ON student_records(student_email);
 CREATE INDEX IF NOT EXISTS idx_student_records_semester ON student_records(semester);
+CREATE INDEX IF NOT EXISTS idx_course_offerings_session ON course_offerings(session_id);
+CREATE INDEX IF NOT EXISTS idx_course_offerings_dept ON course_offerings(offering_dept);
+CREATE INDEX IF NOT EXISTS idx_course_offerings_course ON course_offerings(course_id);
+CREATE INDEX IF NOT EXISTS idx_course_instructors_offering ON course_instructors(offering_id);
+CREATE INDEX IF NOT EXISTS idx_crediting_cat_offering ON crediting_categorization(offering_id);
+
+-- Course Feedback table
+CREATE TABLE IF NOT EXISTS course_feedback (
+    id SERIAL PRIMARY KEY,
+    course_id VARCHAR(50) NOT NULL REFERENCES courses(course_id),
+    student_email VARCHAR(255) NOT NULL REFERENCES students(email),
+    feedback_type VARCHAR(20) NOT NULL, -- 'MID_SEM', 'END_SEM'
+    instructor_id VARCHAR(50)REFERENCES instructors(instructor_id),
+    ratings JSONB, -- Stores question-answer pairs or structured ratings
+    comments TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(course_id, student_email, feedback_type, instructor_id)
+);
+
+-- Student Payments table
+CREATE TABLE IF NOT EXISTS student_payments (
+    id SERIAL PRIMARY KEY,
+    student_email VARCHAR(255) NOT NULL REFERENCES students(email),
+    session_id VARCHAR(50) NOT NULL, -- e.g. "2024-2025-II"
+    amount DECIMAL(10,2) NOT NULL,
+    bank VARCHAR(100),
+    transaction_no VARCHAR(100),
+    transaction_date DATE,
+    proof_url VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'Pending', -- Pending, Verified, Rejected
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_email, session_id, transaction_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_feedback_course ON course_feedback(course_id);
+CREATE INDEX IF NOT EXISTS idx_student_payments_student ON student_payments(student_email);
