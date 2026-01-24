@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import AcademicEvents from './pages/Academics/AcademicEvents';
 import CoursesOffered from './pages/Academics/CoursesOffered';
 import UserManagement from './pages/Admin/UserManagement';
+import PendingApprovals from './pages/Admin/PendingApprovals';
 import GradingPortal from './pages/Faculty/GradingPortal';
 import OfferedCoursesGrid from './pages/Faculty/OfferedCoursesGrid';
 import CourseOfferingDetails from './pages/Faculty/CourseOfferingDetails';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
             <Route path="admin">
               <Route path="users" element={<UserManagement />} />
               <Route path="analytics" element={<Dashboard />} />
+              <Route path="pending-approvals" element={<PendingApprovals />} />
             </Route>
 
             {/* Faculty Routes */}

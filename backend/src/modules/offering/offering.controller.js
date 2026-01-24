@@ -1,6 +1,7 @@
 import * as offeringModel from '../../models/courseOffering.model.js';
 import * as sessionModel from '../../models/academicSession.model.js';
 import * as deptModel from '../../models/department.model.js';
+import * as pendingOfferingModel from '../../models/pendingOffering.model.js';
 
 // ============= Academic Sessions =============
 
@@ -245,6 +246,74 @@ export const searchInstructors = async (req, res) => {
         res.json({ instructors });
     } catch (err) {
         console.error('Error searching instructors:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// ============= Course Offering Proposals =============
+
+export const proposeOffering = async (req, res) => {
+    try {
+        const { courseId, sessionId, offeringDept, slotId, instructorIds } = req.body;
+        const proposedBy = req.user.email;
+
+        if (!courseId || !sessionId || !offeringDept) {
+            return res.status(400).json({ error: 'courseId, sessionId, and offeringDept are required' });
+        }
+
+        const proposal = await pendingOfferingModel.createProposal({
+            courseId,
+            sessionId,
+            offeringDept,
+            slotId,
+            proposedBy,
+            instructorIds: instructorIds || []
+        });
+
+        res.status(201).json({
+            message: 'Course proposal submitted for admin approval',
+            proposal
+        });
+    } catch (err) {
+        console.error('Error creating proposal:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const getPendingProposals = async (req, res) => {
+    try {
+        const proposals = await pendingOfferingModel.getPendingProposals();
+        res.json({ proposals });
+    } catch (err) {
+        console.error('Error getting pending proposals:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const approveProposal = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const offering = await pendingOfferingModel.approveProposal(id);
+        res.json({
+            message: 'Proposal approved and course offering created',
+            offering
+        });
+    } catch (err) {
+        console.error('Error approving proposal:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const rejectProposal = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const proposal = await pendingOfferingModel.rejectProposal(id);
+        res.json({
+            message: 'Proposal rejected',
+            proposal
+        });
+    } catch (err) {
+        console.error('Error rejecting proposal:', err);
         res.status(500).json({ error: err.message });
     }
 };

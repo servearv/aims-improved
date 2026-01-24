@@ -11,14 +11,7 @@ interface Instructor {
     is_coordinator: boolean;
 }
 
-interface CreditingCategory {
-    id: number;
-    degree: string;
-    department: string;
-    dept_name?: string;
-    category: string;
-    entry_years: string;
-}
+// CreditingCategory interface removed - feature disabled
 
 interface Session {
     session_id: string;
@@ -50,9 +43,8 @@ const CourseOfferingDetails: React.FC = () => {
     const [courseTitle, setCourseTitle] = useState('');
     const [courseLtp, setCourseLtp] = useState('');
     const [status, setStatus] = useState('Proposed');
-    const [sessionId, setSessionId] = useState('');
+    const [sessionId, setSessionId] = useState('2025-II');
     const [offeringDept, setOfferingDept] = useState('');
-    const [section, setSection] = useState('');
     const [slotId, setSlotId] = useState<number | null>(null);
 
     // Reference data
@@ -66,14 +58,7 @@ const CourseOfferingDetails: React.FC = () => {
     const [instructorResults, setInstructorResults] = useState<any[]>([]);
     const [searchingInstructors, setSearchingInstructors] = useState(false);
 
-    // Crediting
-    const [crediting, setCrediting] = useState<CreditingCategory[]>([]);
-    const [newCrediting, setNewCrediting] = useState({
-        degree: 'B.Tech',
-        department: '',
-        category: 'Programme Core',
-        entryYears: ''
-    });
+    // Crediting feature removed
 
     // Course search
     const [courseSearch, setCourseSearch] = useState('');
@@ -108,10 +93,7 @@ const CourseOfferingDetails: React.FC = () => {
 
             // Set current session as default for new offerings
             if (isNew) {
-                const currentSession = sessionsData.sessions?.find((s: Session) => s.is_current);
-                if (currentSession) {
-                    setSessionId(currentSession.session_id);
-                }
+                setSessionId('2025-II');
             }
         } catch (err) {
             console.error('Error loading reference data:', err);
@@ -131,10 +113,8 @@ const CourseOfferingDetails: React.FC = () => {
             setStatus(offering.status);
             setSessionId(offering.session_id);
             setOfferingDept(offering.offering_dept);
-            setSection(offering.section || '');
             setSlotId(offering.slot_id);
             setInstructors(offering.instructors || []);
-            setCrediting(offering.crediting || []);
         } catch (err) {
             console.error('Error loading offering:', err);
             alert('Failed to load offering');
@@ -243,43 +223,7 @@ const CourseOfferingDetails: React.FC = () => {
         }
     };
 
-    // Crediting
-    const addCreditingCategory = async () => {
-        if (!newCrediting.department || !newCrediting.entryYears) {
-            alert('Please fill in all crediting fields');
-            return;
-        }
-
-        if (!offeringId) {
-            setCrediting([...crediting, {
-                id: Date.now(),
-                ...newCrediting,
-                entry_years: newCrediting.entryYears
-            }]);
-        } else {
-            try {
-                await api.addCreditingCategory(offeringId, newCrediting);
-                loadOffering(offeringId);
-            } catch (err) {
-                console.error('Error adding crediting:', err);
-                alert('Failed to add crediting category');
-            }
-        }
-        setNewCrediting({ degree: 'B.Tech', department: '', category: 'Programme Core', entryYears: '' });
-    };
-
-    const removeCreditingCategory = async (creditId: number) => {
-        if (!offeringId) {
-            setCrediting(crediting.filter(c => c.id !== creditId));
-        } else {
-            try {
-                await api.removeCreditingCategory(offeringId, creditId);
-                loadOffering(offeringId);
-            } catch (err) {
-                console.error('Error removing crediting:', err);
-            }
-        }
-    };
+    // Crediting functions removed
 
     // Save
     const handleSave = async () => {
@@ -291,39 +235,23 @@ const CourseOfferingDetails: React.FC = () => {
         setSaving(true);
         try {
             if (isNew) {
-                const result = await api.createOffering({
+                // For new offerings, submit as proposal for admin approval
+                const instructorIds = instructors.map(i => i.instructor_id);
+                await api.proposeOffering({
                     courseId,
                     sessionId,
                     offeringDept,
-                    section: section || undefined,
                     slotId: slotId || undefined,
-                    status
+                    instructorIds
                 });
 
-                const newOfferingId = result.offering.id;
-
-                // Add instructors
-                for (const instructor of instructors) {
-                    await api.addOfferingInstructor(newOfferingId, instructor.instructor_id, instructor.is_coordinator);
-                }
-
-                // Add crediting categories
-                for (const credit of crediting) {
-                    await api.addCreditingCategory(newOfferingId, {
-                        degree: credit.degree,
-                        department: credit.department,
-                        category: credit.category,
-                        entryYears: credit.entry_years
-                    });
-                }
-
-                navigate(`/faculty/offerings/${newOfferingId}`);
+                alert('Course proposal submitted for admin approval!');
+                navigate('/faculty/offerings');
             } else if (offeringId) {
                 await api.updateOfferingApi(offeringId, {
                     courseId,
                     sessionId,
                     offeringDept,
-                    section,
                     slotId: slotId || undefined,
                     status
                 });
@@ -343,10 +271,8 @@ const CourseOfferingDetails: React.FC = () => {
         setCourseTitle('');
         setCourseLtp('');
         setStatus('Proposed');
-        setSection('');
         setSlotId(null);
         setInstructors([]);
-        setCrediting([]);
     };
 
     if (loading) {
@@ -371,8 +297,8 @@ const CourseOfferingDetails: React.FC = () => {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab
-                                ? 'text-blue-400 border-b-2 border-blue-400'
-                                : 'text-gray-400 hover:text-white'
+                            ? 'text-blue-400 border-b-2 border-blue-400'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -470,38 +396,16 @@ const CourseOfferingDetails: React.FC = () => {
                                     <label className="text-xs text-gray-500 mb-1.5 block">Academic Session</label>
                                     <div className="flex items-center gap-2">
                                         <select
-                                            value={sessionId}
-                                            onChange={(e) => setSessionId(e.target.value)}
-                                            className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 outline-none"
+                                            value="2025-II"
+                                            disabled
+                                            className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 outline-none opacity-60 cursor-not-allowed"
                                         >
-                                            <option value="">Select...</option>
-                                            {sessions.map(s => (
-                                                <option key={s.session_id} value={s.session_id}>
-                                                    {s.session_id} : {s.name} ({s.start_date} to {s.end_date})
-                                                </option>
-                                            ))}
+                                            <option value="2025-II">2025-II</option>
                                         </select>
-                                        <label className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
-                                            <input type="checkbox" className="rounded border-white/20 bg-black/20" />
-                                            Other
-                                        </label>
                                     </div>
                                 </div>
 
-                                {/* Section */}
-                                <div>
-                                    <label className="text-xs text-gray-500 mb-1.5 block">Section</label>
-                                    <select
-                                        value={section}
-                                        onChange={(e) => setSection(e.target.value)}
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 outline-none"
-                                    >
-                                        <option value="">Select...</option>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
-                                        <option value="C">C</option>
-                                    </select>
-                                </div>
+
 
                                 {/* Slot */}
                                 <div>
@@ -520,87 +424,7 @@ const CourseOfferingDetails: React.FC = () => {
                             </div>
                         </Card>
 
-                        {/* Crediting Categorization */}
-                        <Card className="p-5 bg-[#18181b] border-white/10">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-sm font-semibold text-white">Crediting Categorization</h3>
-                                <Button variant="secondary" size="sm" onClick={addCreditingCategory}>
-                                    Add
-                                </Button>
-                            </div>
 
-                            {/* Add new crediting row */}
-                            <div className="grid grid-cols-5 gap-3 mb-4 text-xs">
-                                <select
-                                    value={newCrediting.degree}
-                                    onChange={(e) => setNewCrediting({ ...newCrediting, degree: e.target.value })}
-                                    className="bg-black/20 border border-white/10 rounded px-2 py-1.5 text-white"
-                                >
-                                    <option value="B.Tech">B.Tech</option>
-                                    <option value="M.Tech">M.Tech</option>
-                                    <option value="PhD">PhD</option>
-                                    <option value="M.Sc">M.Sc</option>
-                                </select>
-                                <select
-                                    value={newCrediting.department}
-                                    onChange={(e) => setNewCrediting({ ...newCrediting, department: e.target.value })}
-                                    className="bg-black/20 border border-white/10 rounded px-2 py-1.5 text-white"
-                                >
-                                    <option value="">Department...</option>
-                                    {departments.map(d => (
-                                        <option key={d.dept_code} value={d.dept_code}>{d.name}</option>
-                                    ))}
-                                </select>
-                                <select
-                                    value={newCrediting.category}
-                                    onChange={(e) => setNewCrediting({ ...newCrediting, category: e.target.value })}
-                                    className="bg-black/20 border border-white/10 rounded px-2 py-1.5 text-white"
-                                >
-                                    <option value="Programme Core">Programme Core</option>
-                                    <option value="Programme Elective">Programme Elective</option>
-                                    <option value="Open Elective">Open Elective</option>
-                                    <option value="Minor">Minor</option>
-                                </select>
-                                <Input
-                                    placeholder="E.g. 2019,2020"
-                                    value={newCrediting.entryYears}
-                                    onChange={(e) => setNewCrediting({ ...newCrediting, entryYears: e.target.value })}
-                                    className="h-[28px] text-xs"
-                                />
-                                <div></div>
-                            </div>
-
-                            {/* Table header */}
-                            <div className="grid grid-cols-5 gap-3 text-xs text-gray-500 font-medium pb-2 border-b border-white/5">
-                                <span>Degree</span>
-                                <span>Department</span>
-                                <span>Category</span>
-                                <span>For Entry Years</span>
-                                <span>Delete</span>
-                            </div>
-
-                            {/* Crediting rows */}
-                            {crediting.length === 0 ? (
-                                <p className="text-xs text-gray-500 py-3">Nothing added yet!</p>
-                            ) : (
-                                <div className="divide-y divide-white/5">
-                                    {crediting.map(credit => (
-                                        <div key={credit.id} className="grid grid-cols-5 gap-3 py-2 text-xs text-gray-300">
-                                            <span>{credit.degree}</span>
-                                            <span>{credit.dept_name || credit.department}</span>
-                                            <span>{credit.category}</span>
-                                            <span>{credit.entry_years}</span>
-                                            <button
-                                                onClick={() => removeCreditingCategory(credit.id)}
-                                                className="text-red-400 hover:text-red-300"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </Card>
 
                         {/* Action Buttons */}
                         <div className="flex gap-3">

@@ -83,8 +83,14 @@
       ::-webkit-scrollbar-thumb:hover {
         background: var(--text-primary);
       }
-      .calendar-invert {
+    .calendar-invert {
         color-scheme: light dark;
+      }
+      
+      /* Fix for dark mode dropdowns */
+      .dark select option {
+        background-color: var(--bg-surface);
+        color: var(--text-primary);
       }
     </style>
   <script type="importmap">

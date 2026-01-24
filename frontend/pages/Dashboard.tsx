@@ -357,9 +357,11 @@ const AdminDashboard = ({ stats }: { stats: any }) => {
                icon={TrendingUp}
             />
             <StatCard
-               title="Departments"
-               value={stats?.departmentCount || 0}
-               icon={PieChart}
+               title="Pending Approvals"
+               value={stats?.pendingApprovals || 0}
+               subtitle="Course Requests"
+               color={stats?.pendingApprovals > 0 ? "text-yellow-500" : undefined}
+               icon={Clock}
             />
          </div>
 

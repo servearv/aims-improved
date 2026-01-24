@@ -264,6 +264,27 @@ export async function getCourseById(courseId: string) {
   return response.json();
 }
 
+export async function updateCourse(courseId: string, updates: any) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update course');
+  }
+
+  return response.json();
+}
+
 export async function enrollInCourse(courseId: string, semester: string) {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
@@ -391,6 +412,48 @@ export async function updateEnrollment(enrollmentId: number, updates: { status?:
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to update enrollment');
+  }
+
+  return response.json();
+}
+
+export async function approveEnrollment(enrollmentId: number) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/courses/requests/${enrollmentId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action: 'approve' }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to approve enrollment');
+  }
+
+  return response.json();
+}
+
+export async function rejectEnrollment(enrollmentId: number) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/courses/requests/${enrollmentId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action: 'reject' }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to reject enrollment');
   }
 
   return response.json();
@@ -567,6 +630,94 @@ export async function deleteOffering(id: number) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete offering');
+  }
+
+  return response.json();
+}
+
+// ============= Course Offering Proposals =============
+
+export async function proposeOffering(data: {
+  courseId: string;
+  sessionId: string;
+  offeringDept: string;
+  slotId?: number;
+  instructorIds?: string[];
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/api/offerings/propose`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to submit proposal');
+  }
+
+  return response.json();
+}
+
+export async function getPendingProposals() {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/api/offerings/pending`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch pending proposals');
+  }
+
+  return response.json();
+}
+
+export async function approveProposal(id: number) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/api/offerings/pending/${id}/approve`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to approve proposal');
+  }
+
+  return response.json();
+}
+
+export async function rejectProposal(id: number) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/api/offerings/pending/${id}/reject`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to reject proposal');
   }
 
   return response.json();

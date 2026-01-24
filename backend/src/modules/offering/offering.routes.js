@@ -36,4 +36,10 @@ router.get('/offerings/:id/crediting', offeringController.getOfferingCrediting);
 router.post('/offerings/:id/crediting', offeringController.addCrediting);
 router.delete('/offerings/:id/crediting/:creditId', offeringController.removeCrediting);
 
+// Course Offering Proposals (instructor proposes, admin approves)
+router.post('/offerings/propose', offeringController.proposeOffering);
+router.get('/offerings/pending', offeringController.getPendingProposals);
+router.post('/offerings/pending/:id/approve', offeringController.approveProposal);
+router.post('/offerings/pending/:id/reject', offeringController.rejectProposal);
+
 export default router;

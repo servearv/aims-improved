@@ -63,10 +63,7 @@ const Layout: React.FC = () => {
         return [
           { label: 'Admin Dashboard', icon: LayoutDashboard, path: '/' },
           { label: 'User Management', icon: Users, path: '/admin/users' },
-          { label: 'Course Catalog', icon: BookOpen, path: '/academics/courses-offered' },
-          { label: 'System Analytics', icon: Server, path: '/admin/analytics' },
-          { label: 'Finance Overview', icon: CreditCard, path: '/finance' },
-          ...common
+          { label: 'Pending Approvals', icon: ClipboardCheck, path: '/admin/pending-approvals' },
         ];
       case UserRole.INSTRUCTOR:
         return [

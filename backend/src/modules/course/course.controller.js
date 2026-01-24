@@ -66,14 +66,19 @@ export const enrollInCourse = async (req, res) => {
     const { courseId, semester } = req.body;
     const studentEmail = req.user.email;
 
+    // Create enrollment with PENDING_INSTRUCTOR status
+    // Student enrolls -> Instructor approves -> Advisor approves -> Enrolled
     const enrollment = await enrollStudent({
       studentEmail,
       courseId,
       semester,
-      status: 'Enrolled'
+      status: 'PENDING_INSTRUCTOR'
     });
 
-    res.status(201).json({ enrollment });
+    res.status(201).json({
+      message: 'Enrollment request submitted. Awaiting instructor approval.',
+      enrollment
+    });
   } catch (err) {
     console.error('Error enrolling in course:', err);
     res.status(500).json({ error: err.message });
@@ -158,15 +163,58 @@ export const getRegistrationRequests = async (req, res) => {
 export const updateRegistrationStatusHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, grade, gradePoints, creditsEarned } = req.body;
+    const { status, grade, gradePoints, creditsEarned, action } = req.body;
+    const userRole = req.user.role;
 
-    const enrollment = await updateEnrollment(id, { status, grade, gradePoints, creditsEarned });
+    // Get current enrollment to check current status
+    const currentEnrollment = await getEnrollmentById(id);
+    if (!currentEnrollment) {
+      return res.status(404).json({ error: 'Enrollment record not found' });
+    }
+
+    let newStatus = status;
+
+    // If action is provided, determine new status based on role and current status
+    if (action) {
+      if (action === 'approve') {
+        if (userRole === 'INSTRUCTOR' && currentEnrollment.status === 'PENDING_INSTRUCTOR') {
+          newStatus = 'PENDING_ADVISOR';
+        } else if (userRole === 'ADVISOR' && currentEnrollment.status === 'PENDING_ADVISOR') {
+          newStatus = 'Approved';
+        } else if (userRole === 'ADMIN') {
+          // Admin can approve directly to any status
+          newStatus = status || 'Approved';
+        } else {
+          return res.status(403).json({ error: 'Not authorized to approve at this stage' });
+        }
+      } else if (action === 'reject') {
+        if (userRole === 'INSTRUCTOR' && currentEnrollment.status === 'PENDING_INSTRUCTOR') {
+          newStatus = 'REJECTED_INSTRUCTOR';
+        } else if (userRole === 'ADVISOR' && currentEnrollment.status === 'PENDING_ADVISOR') {
+          newStatus = 'REJECTED_ADVISOR';
+        } else if (userRole === 'ADMIN') {
+          newStatus = 'Rejected';
+        } else {
+          return res.status(403).json({ error: 'Not authorized to reject at this stage' });
+        }
+      }
+    }
+
+    const enrollment = await updateEnrollment(id, {
+      status: newStatus,
+      grade,
+      gradePoints,
+      creditsEarned
+    });
 
     if (!enrollment) {
       return res.status(404).json({ error: 'Enrollment record not found' });
     }
 
-    res.json({ enrollment });
+    res.json({
+      message: `Enrollment ${action || 'updated'} successfully`,
+      enrollment
+    });
   } catch (err) {
     console.error('Error updating registration status:', err);
     res.status(500).json({ error: err.message });

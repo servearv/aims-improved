@@ -177,6 +177,23 @@ CREATE INDEX IF NOT EXISTS idx_course_offerings_course ON course_offerings(cours
 CREATE INDEX IF NOT EXISTS idx_course_instructors_offering ON course_instructors(offering_id);
 CREATE INDEX IF NOT EXISTS idx_crediting_cat_offering ON crediting_categorization(offering_id);
 
+-- Pending Course Offerings (proposals from instructors awaiting admin approval)
+CREATE TABLE IF NOT EXISTS pending_course_offerings (
+    id SERIAL PRIMARY KEY,
+    course_id VARCHAR(50) NOT NULL REFERENCES courses(course_id),
+    session_id VARCHAR(20) NOT NULL,
+    offering_dept VARCHAR(20) REFERENCES departments(dept_code),
+    slot_id INTEGER REFERENCES slots(slot_id),
+    proposed_by VARCHAR(255) NOT NULL REFERENCES users(email),
+    instructor_ids TEXT[], -- Array of instructor IDs to add on approval
+    status VARCHAR(20) DEFAULT 'Pending', -- Pending, Approved, Rejected
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_pending_offerings_status ON pending_course_offerings(status);
+CREATE INDEX IF NOT EXISTS idx_pending_offerings_proposed_by ON pending_course_offerings(proposed_by);
+
 -- Course Feedback table
 CREATE TABLE IF NOT EXISTS course_feedback (
     id SERIAL PRIMARY KEY,
