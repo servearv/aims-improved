@@ -4,11 +4,8 @@ import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Registration from './pages/Academics/Registration';
-import Grades from './pages/Academics/Grades';
 import Finance from './pages/Finance';
-import TimeTable from './pages/Academics/TimeTable';
-import StudentRecord from './pages/StudentRecord';
-import CourseFeedback from './pages/CourseFeedback';
+
 import Help from './pages/Help';
 import Login from './pages/Login';
 import AcademicEvents from './pages/Academics/AcademicEvents';
@@ -21,6 +18,14 @@ import CourseOfferingDetails from './pages/Faculty/CourseOfferingDetails';
 import UploadGrades from './pages/Faculty/UploadGrades';
 import AdviseeList from './pages/Advisor/AdviseeList';
 import { useAppStore } from './store';
+
+// Student Imports
+import StudentDashboard from './pages/Student/Dashboard';
+import StudentRegistration from './pages/Student/CourseRegistration';
+import StudentGrades from './pages/Student/Grades';
+import StudentTimeTable from './pages/Student/TimeTable';
+import StudentCourses from './pages/Student/CoursesOffered';
+import StudentFeedback from './pages/Student/CourseFeedback';
 
 // Auth Guard
 const ProtectedRoute = () => {
@@ -40,6 +45,9 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Note: For '/' route, we keep the main Dashboard which handles role-switching.
+  // But for direct links, we point to specific student pages.
+
   return (
     <HashRouter>
       <Routes>
@@ -50,13 +58,23 @@ const App: React.FC = () => {
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
 
-            {/* Academic Routes */}
+            {/* Student Routes */}
+            <Route path="student">
+              <Route path="dashboard" element={<StudentDashboard />} />
+              <Route path="registration" element={<StudentRegistration />} />
+              <Route path="courses" element={<StudentCourses />} />
+              <Route path="grades" element={<StudentGrades />} />
+              <Route path="timetable" element={<StudentTimeTable />} />
+              <Route path="feedback" element={<StudentFeedback />} />
+            </Route>
+
+            {/* Academic Routes (Legacy/Shared) */}
             <Route path="academics">
               <Route path="registration" element={<Registration />} />
               <Route path="courses-offered" element={<CoursesOffered />} />
               <Route path="events" element={<AcademicEvents />} />
-              <Route path="grades" element={<Grades />} />
-              <Route path="timetable" element={<TimeTable />} />
+              <Route path="grades" element={<StudentGrades />} />
+              <Route path="timetable" element={<StudentTimeTable />} />
             </Route>
 
             {/* Admin Routes */}
@@ -82,8 +100,8 @@ const App: React.FC = () => {
             </Route>
 
             <Route path="finance" element={<Finance />} />
-            <Route path="student-record" element={<StudentRecord />} />
-            <Route path="course-feedback" element={<CourseFeedback />} />
+
+            <Route path="course-feedback" element={<StudentFeedback />} />
             <Route path="help" element={<Help />} />
           </Route>
         </Route>

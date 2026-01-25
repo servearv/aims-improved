@@ -1,5 +1,5 @@
 -- Clear existing data
-TRUNCATE TABLE users, instructors, faculty_advisors, students, slots, courses, student_courses CASCADE;
+TRUNCATE TABLE users, instructors, faculty_advisors, students, slots, courses, student_courses, course_offerings CASCADE;
 
 -- Users
 INSERT INTO users (email, role, is_active) VALUES
@@ -15,9 +15,9 @@ ON CONFLICT (email) DO NOTHING;
 -- Instructors
 INSERT INTO instructors (instructor_id, email, dept) VALUES
 ('i1', '2023csb1106+i1@iitrpr.ac.in', 'CSE'),
-('i2', '2023csb1106+i2@iitrpr.ac.in', 'CSE'),
-('i3', '2023csb1106+i3@iitrpr.ac.in', 'Physics'),
-('a1', '2023csb1106+a1@iitrpr.ac.in', 'ME')
+('i2', '2023csb1106+i2@iitrpr.ac.in', 'EE'),
+('i3', '2023csb1106+i3@iitrpr.ac.in', 'ME'),
+('a1', '2023csb1106+a1@iitrpr.ac.in', 'CSE')
 ON CONFLICT (instructor_id) DO NOTHING;
 
 -- Faculty Advisors
@@ -27,165 +27,91 @@ ON CONFLICT (email) DO NOTHING;
 
 -- Students
 INSERT INTO students (email, entry_no, fa_id, batch, "group") VALUES
-('2023csb1106+s1@iitrpr.ac.in', '2023CSB1103', 'a1', 2023, 'A'),
+('2023csb1106+s1@iitrpr.ac.in', '2023CSB1106', 'a1', 2023, 'A'),
 ('2023csb1106+s2@iitrpr.ac.in', '2023CSB1112', 'a1', 2023, 'B')
 ON CONFLICT (email) DO NOTHING;
 
--- Slots
-INSERT INTO slots (slot_id, timings) VALUES
-(1, 'Mon, Wed 10:00 AM'),
-(2, 'Tue, Thu 11:30 AM'),
-(3, 'Mon, Wed 02:00 PM'),
-(4, 'Fri 09:00 AM')
-ON CONFLICT (slot_id) DO NOTHING;
-
--- Courses
-INSERT INTO courses (course_id, title, credits, slot_id, instructor_id, type, ltp, status) VALUES
-('CS101', 'Intro to Programming', 4, 1, 'i1', 'Core', '3-0-2', 'Offered'),
-('CS201', 'Data Structures', 4, 2, 'i2', 'Core', '3-1-0', 'Offered'),
-('MA102', 'Linear Algebra', 3, 3, 'i1', 'Core', '3-0-0', 'Offered'),
-('PH101', 'Physics I', 4, 4, 'i3', 'Core', '3-0-2', 'Offered')
-ON CONFLICT (course_id) DO NOTHING;
-
--- Student Courses (Requests/Enrollments)
-INSERT INTO student_courses (student_email, course_id, semester, status) VALUES
-('2023csb1106+s1@iitrpr.ac.in', 'CS201', '2024-II', 'Pending_Instructor'),
-('2023csb1106+s2@iitrpr.ac.in', 'CS101', '2024-II', 'Pending_Advisor'),
-('2023csb1106+s1@iitrpr.ac.in', 'PH101', '2024-II', 'Approved')
-ON CONFLICT (student_email, course_id, semester) DO UPDATE SET status = EXCLUDED.status;
-
--- Academic Sessions
-INSERT INTO academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES
-('2025-II', 'current session', '2025-12-04', '2026-05-30', true, 'regular'),
-('2025-S', 'upcoming session (summer)', '2026-06-01', '2026-07-31', false, 'summer'),
-('2026-I', 'next session (regular)', '2026-08-01', '2026-12-03', false, 'regular')
-ON CONFLICT (session_id) DO NOTHING;
+-- Slots (A-F)
+-- Schema uses slot_id SERIAL, so we typically can't force text IDs easily without changing schema.
+-- HOWEVER, we can just insert them and know their IDs if we reset sequences, OR distinct them by 'name' if schema allows.
+-- Schema: slot_id (int), timings (varchar).
+-- I'll use IDs 1-6 for A-F and put the details in 'timings' or add a description.
+-- Actually the user code "Slot A" implies a name.
+-- Let's check schema again: "timings VARCHAR(100)".
+-- I will put "Slot A: Mon 9-10..." in timings. 
+-- Wait, the logic requires strict slot checking. I should probably add a logic mapping slot_id to "A", "B" etc.
+-- But for now I'll just insert them in order so 1=A, 2=B, etc.
+INSERT INTO slots (slot_id, timings, day_of_week) VALUES
+(1, 'Slot A', 'Mon,Wed,Thu'), -- A
+(2, 'Slot B', 'Mon,Wed,Thu'), -- B
+(3, 'Slot C', 'Mon,Wed,Thu'), -- C
+(4, 'Slot D', 'Unknown'),       -- D
+(5, 'Slot E', 'Unknown'),       -- E
+(6, 'Slot F', 'Unknown')        -- F
+ON CONFLICT (slot_id) DO UPDATE SET timings = EXCLUDED.timings;
 
 -- Departments
 INSERT INTO departments (dept_code, name) VALUES
 ('CSE', 'Computer Science and Engineering'),
 ('EE', 'Electrical Engineering'),
-('ME', 'Mechanical Engineering'),
-('CE', 'Civil Engineering'),
-('MATH', 'Mathematics'),
-('PHY', 'Physics'),
-('HSS', 'Humanities and Social Sciences'),
-('CHEM', 'Chemistry')
+('ME', 'Mechanical Engineering')
 ON CONFLICT (dept_code) DO NOTHING;
 
--- Course Offerings (sample offerings for current session)
-INSERT INTO course_offerings (course_id, session_id, offering_dept, section, status, enrolment_count) VALUES
-('CS101', '2025-II', 'CSE', 'A', 'Enrolling', 45),
-('CS201', '2025-II', 'CSE', 'A', 'Enrolling', 30),
-('MA102', '2025-II', 'MATH', 'A', 'Offered', 120),
-('PH101', '2025-II', 'PHY', 'A', 'Enrolling', 85)
+-- Courses (Real Data)
+-- Format: L-T-P-S-C. Schema has ltp (varchar) and credits (int).
+-- I will store full format in 'ltp' column like '3-1-2-6-4'.
+-- Slot mapping: The user associates courses with slots via catalog. Schema has course.slot_id.
+-- I'll map A=1, B=2, C=3, D=4, E=5, F=6.
+
+INSERT INTO courses (course_id, title, credits, slot_id, instructor_id, ltp, status) VALUES
+-- CSE
+('CS201', 'Data Structures', 4, 1, 'i1', '3-1-2-6-4', 'Offered'),
+('CS202', 'Analysis and Design of Algorithms', 3, 2, 'i1', '3-1-0-5-3', 'Offered'),
+('CS203', 'Digital Logic Design', 4, 3, 'i1', '3-1-2-6-4', 'Offered'),
+('CS301', 'Database Management Systems', 4, 4, 'i1', '3-0-2-7-4', 'Offered'),
+('CS303', 'Operating Systems', 4, 5, 'i1', '3-0-2-7-4', 'Offered'),
+
+-- EE
+('EE201', 'Signals and Systems', 3, 2, 'i2', '3-1-0-5-3', 'Offered'),
+('EE203', 'Digital Circuits', 3, 3, 'i2', '3-1-0-5-3', 'Offered'),
+('EE205', 'Electromechanics', 3, 1, 'i2', '3-1-0-5-3', 'Offered'),
+('EE207', 'Control Engineering', 3, 4, 'i2', '3-1-0-5-3', 'Offered'),
+('EE301', 'Analog Circuits', 3, 5, 'i2', '3-1-0-5-3', 'Offered'),
+
+-- ME
+('MEL101', 'Continuum Mechanics', 4, 3, 'i3', '3-1-0-8-4', 'Offered'),
+('MEL201', 'Fluid Mechanics', 4, 1, 'i3', '3-1-0-8-4', 'Offered'),
+('MEL202', 'Manufacturing with Metallic Materials', 3, 2, 'i3', '3-0-0-6-3', 'Offered'),
+('MEL301', 'Heat and Mass Transfer', 4, 5, 'i3', '3-1-2-6-4', 'Offered'),
+('MEL302', 'Manufacturing Processes', 4, 4, 'i3', '3-0-2-7-4', 'Offered')
+ON CONFLICT (course_id) DO UPDATE SET 
+    title = EXCLUDED.title, 
+    ltp = EXCLUDED.ltp, 
+    slot_id = EXCLUDED.slot_id, 
+    credits = EXCLUDED.credits;
+
+-- Current Academic Session
+INSERT INTO academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES
+('2025-II', 'Current Session', '2025-01-01', '2025-05-30', true, 'regular')
+ON CONFLICT (session_id) DO NOTHING;
+
+-- Offerings (Map all courses to current session so they are visible/approverd)
+-- Status: OFFERED (Approved)
+INSERT INTO course_offerings (course_id, session_id, offering_dept, section, slot_id, status) VALUES
+('CS201', '2025-II', 'CSE', 'A', 1, 'Offered'),
+('CS202', '2025-II', 'CSE', 'A', 2, 'Offered'),
+('CS203', '2025-II', 'CSE', 'A', 3, 'Offered'),
+('CS301', '2025-II', 'CSE', 'A', 4, 'Offered'),
+('CS303', '2025-II', 'CSE', 'A', 5, 'Offered'),
+('EE201', '2025-II', 'EE', 'A', 2, 'Offered'),
+('EE203', '2025-II', 'EE', 'A', 3, 'Offered'),
+('EE205', '2025-II', 'EE', 'A', 1, 'Offered'),
+('EE207', '2025-II', 'EE', 'A', 4, 'Offered'),
+('EE301', '2025-II', 'EE', 'A', 5, 'Offered'),
+('MEL101', '2025-II', 'ME', 'A', 3, 'Offered'),
+('MEL201', '2025-II', 'ME', 'A', 1, 'Offered'),
+('MEL202', '2025-II', 'ME', 'A', 2, 'Offered'),
+('MEL301', '2025-II', 'ME', 'A', 5, 'Offered'),
+('MEL302', '2025-II', 'ME', 'A', 4, 'Offered')
 ON CONFLICT (course_id, session_id, section) DO NOTHING;
-
--- Course Instructors (link offerings to instructors)
-INSERT INTO course_instructors (offering_id, instructor_id, is_coordinator)
-SELECT co.id, 'i1', true FROM course_offerings co WHERE co.course_id = 'CS101' AND co.session_id = '2025-II'
-ON CONFLICT (offering_id, instructor_id) DO NOTHING;
-
-INSERT INTO course_instructors (offering_id, instructor_id, is_coordinator)
-SELECT co.id, 'i2', true FROM course_offerings co WHERE co.course_id = 'CS201' AND co.session_id = '2025-II'
-ON CONFLICT (offering_id, instructor_id) DO NOTHING;
-
-INSERT INTO course_instructors (offering_id, instructor_id, is_coordinator)
-SELECT co.id, 'i1', false FROM course_offerings co WHERE co.course_id = 'CS201' AND co.session_id = '2025-II'
-ON CONFLICT (offering_id, instructor_id) DO NOTHING;
-
-INSERT INTO course_instructors (offering_id, instructor_id, is_coordinator)
-SELECT co.id, 'i3', true FROM course_offerings co WHERE co.course_id = 'PH101' AND co.session_id = '2025-II'
-ON CONFLICT (offering_id, instructor_id) DO NOTHING;
-
--- Crediting Categorization (sample)
-INSERT INTO crediting_categorization (offering_id, degree, department, category, entry_years)
-SELECT co.id, 'B.Tech', 'CSE', 'Programme Core', '2023,2024' 
-FROM course_offerings co WHERE co.course_id = 'CS201' AND co.session_id = '2025-II'
-ON CONFLICT DO NOTHING;
-
--- =====================================================
--- ADDITIONAL SEED DATA FOR COMPLETE FUNCTIONALITY
--- =====================================================
-
--- Update slots with structured timing data (for timetable generation)
-UPDATE slots SET day_of_week = 'Mon,Wed', start_time = '10:00', end_time = '11:00' WHERE slot_id = 1;
-UPDATE slots SET day_of_week = 'Tue,Thu', start_time = '11:30', end_time = '12:30' WHERE slot_id = 2;
-UPDATE slots SET day_of_week = 'Mon,Wed', start_time = '14:00', end_time = '15:00' WHERE slot_id = 3;
-UPDATE slots SET day_of_week = 'Fri', start_time = '09:00', end_time = '10:00' WHERE slot_id = 4;
-
--- Add more slots for variety
-INSERT INTO slots (slot_id, timings, day_of_week, start_time, end_time) VALUES
-(5, 'Tue, Thu 02:00 PM', 'Tue,Thu', '14:00', '15:00'),
-(6, 'Mon, Wed, Fri 09:00 AM', 'Mon,Wed,Fri', '09:00', '10:00'),
-(7, 'Tue, Thu 09:00 AM', 'Tue,Thu', '09:00', '10:30'),
-(8, 'Wed, Fri 03:00 PM', 'Wed,Fri', '15:00', '16:00')
-ON CONFLICT (slot_id) DO NOTHING;
-
--- Update courses with capacity and classroom
-UPDATE courses SET capacity = 60, classroom = 'LT-1' WHERE course_id = 'CS101';
-UPDATE courses SET capacity = 50, classroom = 'LT-2' WHERE course_id = 'CS201';
-UPDATE courses SET capacity = 150, classroom = 'LT-3' WHERE course_id = 'MA102';
-UPDATE courses SET capacity = 80, classroom = 'LT-4' WHERE course_id = 'PH101';
-
--- Add more courses for richer testing
-INSERT INTO courses (course_id, title, credits, slot_id, instructor_id, type, ltp, status, capacity, classroom) VALUES
-('CS301', 'Database Systems', 4, 5, 'i2', 'Core', '3-0-2', 'Offered', 45, 'LT-5'),
-('CS302', 'Operating Systems', 4, 6, 'i1', 'Core', '3-0-2', 'Offered', 50, 'LT-6'),
-('EE101', 'Basic Electronics', 3, 7, 'i3', 'Elective', '3-0-0', 'Offered', 40, 'LT-7'),
-('MA201', 'Probability & Statistics', 3, 8, 'i1', 'Core', '3-1-0', 'Offered', 120, 'LT-3')
-ON CONFLICT (course_id) DO NOTHING;
-
--- Add grades to existing approved enrollment
-UPDATE student_courses SET grade = 'A', grade_points = 10.0, credits_earned = 4, status = 'Completed'
-WHERE student_email = '2023csb1106+s1@iitrpr.ac.in' AND course_id = 'PH101';
-
--- Add more enrollment history with grades (completed courses from previous semesters)
-INSERT INTO student_courses (student_email, course_id, semester, status, grade, grade_points, credits_earned) VALUES
--- Student 1 - Previous semester completed courses
-('2023csb1106+s1@iitrpr.ac.in', 'CS101', '2024-I', 'Completed', 'A+', 10.0, 4),
-('2023csb1106+s1@iitrpr.ac.in', 'MA102', '2024-I', 'Completed', 'A', 10.0, 3),
-('2023csb1106+s1@iitrpr.ac.in', 'EE101', '2024-I', 'Completed', 'B+', 8.0, 3),
--- Student 2 - Previous semester completed courses
-('2023csb1106+s2@iitrpr.ac.in', 'CS101', '2024-I', 'Completed', 'B', 7.0, 4),
-('2023csb1106+s2@iitrpr.ac.in', 'MA102', '2024-I', 'Completed', 'A', 10.0, 3),
-('2023csb1106+s2@iitrpr.ac.in', 'PH101', '2024-I', 'Completed', 'A+', 10.0, 4)
-ON CONFLICT (student_email, course_id, semester) DO UPDATE SET 
-  status = EXCLUDED.status, 
-  grade = EXCLUDED.grade, 
-  grade_points = EXCLUDED.grade_points,
-  credits_earned = EXCLUDED.credits_earned;
-
--- Add current semester enrollments
-INSERT INTO student_courses (student_email, course_id, semester, status) VALUES
-('2023csb1106+s1@iitrpr.ac.in', 'CS301', '2025-II', 'Approved'),
-('2023csb1106+s1@iitrpr.ac.in', 'CS302', '2025-II', 'Approved'),
-('2023csb1106+s2@iitrpr.ac.in', 'CS201', '2025-II', 'Approved'),
-('2023csb1106+s2@iitrpr.ac.in', 'MA201', '2025-II', 'Pending_Instructor')
-ON CONFLICT (student_email, course_id, semester) DO NOTHING;
-
--- Student Records (semester summaries for CGPA calculation)
-INSERT INTO student_records (student_email, semester, sgpa, credits_completed) VALUES
-('2023csb1106+s1@iitrpr.ac.in', '2024-I', 9.40, 10),
-('2023csb1106+s1@iitrpr.ac.in', '2024-II', 10.00, 4),
-('2023csb1106+s2@iitrpr.ac.in', '2024-I', 8.82, 11)
-ON CONFLICT (student_email, semester) DO UPDATE SET 
-  sgpa = EXCLUDED.sgpa, 
-  credits_completed = EXCLUDED.credits_completed;
-
--- Add crediting for more courses
-INSERT INTO crediting_categorization (offering_id, degree, department, category, entry_years)
-SELECT co.id, 'B.Tech', 'CSE', 'Programme Core', '2023,2024' 
-FROM course_offerings co WHERE co.course_id = 'CS101' AND co.session_id = '2025-II'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO crediting_categorization (offering_id, degree, department, category, entry_years)
-SELECT co.id, 'B.Tech', 'CSE', 'Programme Core', '2023,2024' 
-FROM course_offerings co WHERE co.course_id = 'MA102' AND co.session_id = '2025-II'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO crediting_categorization (offering_id, degree, department, category, entry_years)
-SELECT co.id, 'B.Tech', 'PHY', 'Programme Core', '2023,2024' 
-FROM course_offerings co WHERE co.course_id = 'PH101' AND co.session_id = '2025-II'
-ON CONFLICT DO NOTHING;
 

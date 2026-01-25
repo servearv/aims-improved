@@ -1,22 +1,23 @@
-
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Badge } from '../../components/ui';
+import { Card, Input, Badge, Button } from '../../components/ui';
 import { Search, Eraser, Info, Loader2 } from 'lucide-react';
-import { getAllCourses } from '../../utils/api';
+import { getOfferings, enrollInCourse } from '../../utils/api';
 
-interface CourseData {
+interface OfferingData {
+  id: number;
   course_id: string;
   title: string;
   credits: number;
-  instructor_email?: string;
-  instructor_dept?: string;
+  instructors: { email: string; dept: string }[];
   type?: string;
   status?: string;
   ltp?: string;
+  session_id: string;
+  offering_dept: string;
 }
 
 const CoursesOffered: React.FC = () => {
-  const [results, setResults] = useState<CourseData[]>([]);
+  const [results, setResults] = useState<OfferingData[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -37,18 +38,17 @@ const CoursesOffered: React.FC = () => {
       setLoading(true);
 
       const apiFilters: any = {};
+      if (filters.session) apiFilters.sessionId = filters.session;
+      if (filters.department) apiFilters.deptCode = filters.department;
       if (filters.status) apiFilters.status = filters.status;
-      if (filters.code) apiFilters.code = filters.code;
+      if (filters.code) apiFilters.courseId = filters.code;
       if (filters.title) apiFilters.title = filters.title;
-      if (filters.department) apiFilters.department = filters.department;
-      if (filters.ltp) apiFilters.ltp = filters.ltp;
-      if (filters.instructor) apiFilters.instructorId = filters.instructor;
+      // Note: LTP and Instructor Text Search need backend support in offering model
 
-      console.log('Sending filters:', apiFilters); // Debug log
-      const data = await getAllCourses(apiFilters);
-      setResults(data.courses || []);
+      const data = await getOfferings(apiFilters);
+      setResults(data.offerings || []);
     } catch (err: any) {
-      console.error('Error fetching courses:', err);
+      console.error('Error fetching offerings:', err);
       setResults([]);
     } finally {
       setLoading(false);
@@ -71,6 +71,17 @@ const CoursesOffered: React.FC = () => {
 
   const handleChange = (field: string, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEnrollClick = async (offering: OfferingData) => {
+    if (!confirm(`Are you sure you want to enroll in ${offering.course_id}?`)) return;
+    try {
+      // Use courseId and session_id as per API requirement
+      await enrollInCourse(offering.course_id, offering.session_id);
+      alert('Enrollment request submitted! Check "Registration" page for status.');
+    } catch (err: any) {
+      alert(`Enrollment failed: ${err.message}`);
+    }
   };
 
   return (
@@ -138,7 +149,6 @@ const CoursesOffered: React.FC = () => {
               </select>
             </div>
           </div>
-          {/* "Other" Checkbox simulated as per screenshot layout flow, but kept simple here */}
 
           <div className="xl:col-span-1">
             <label className="text-xs text-gray-500 mb-1.5 block">L-T-P</label>
@@ -231,6 +241,7 @@ const CoursesOffered: React.FC = () => {
                   <th className="px-4 py-3 font-medium">L-T-P</th>
                   <th className="px-4 py-3 font-medium">Instructor</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -238,14 +249,21 @@ const CoursesOffered: React.FC = () => {
                   <tr key={course.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3 text-white">
                       <span className="font-mono text-gray-400 mr-2">{course.course_id}</span>
-                      <span className="bg-white/5 px-1.5 py-0.5 rounded text-[10px] border border-white/5">{course.instructor_dept || 'CSE'}</span>
+                      <span className="bg-white/5 px-1.5 py-0.5 rounded text-[10px] border border-white/5">{course.offering_dept}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-300 font-medium">{course.title}</td>
-                    <td className="px-4 py-3 text-gray-500">{filters.session || '2024-II'}</td>
-                    <td className="px-4 py-3 text-gray-400 font-mono">{course.ltp || '3-0-0'}</td>
-                    <td className="px-4 py-3 text-gray-400">{course.instructor_email || 'N/A'}</td>
+                    <td className="px-4 py-3 text-gray-500">{course.session_id}</td>
+                    <td className="px-4 py-3 text-gray-400 font-mono">{course.ltp}</td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {course.instructors && course.instructors.length > 0
+                        ? course.instructors.map(i => i.email.split('@')[0]).join(', ')
+                        : 'TBS'}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge color="green">{course.status || 'Offered'}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button size="sm" onClick={() => handleEnrollClick(course)}>Enroll</Button>
                     </td>
                   </tr>
                 ))}

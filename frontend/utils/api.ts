@@ -80,26 +80,7 @@ function getAuthToken(): string | null {
   return localStorage.getItem('auth_token');
 }
 
-// Student API functions
-export async function getStudentRecord(email?: string) {
-  const token = getAuthToken();
-  if (!token) throw new Error('Not authenticated');
 
-  const url = email ? `${API_BASE_URL}/student/record/${email}` : `${API_BASE_URL}/student/record`;
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch student record');
-  }
-
-  return response.json();
-}
 
 export async function getStudentCourses(semester?: string) {
   const token = getAuthToken();
@@ -220,6 +201,10 @@ export async function getAllCourses(filters?: {
   status?: string;
   instructorId?: string;
   type?: string;
+  code?: string;
+  title?: string;
+  department?: string;
+  ltp?: string;
 }) {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
@@ -228,6 +213,10 @@ export async function getAllCourses(filters?: {
   if (filters?.status) params.append('status', filters.status);
   if (filters?.instructorId) params.append('instructorId', filters.instructorId);
   if (filters?.type) params.append('type', filters.type);
+  if (filters?.code) params.append('code', filters.code);
+  if (filters?.title) params.append('title', filters.title);
+  if (filters?.department) params.append('department', filters.department);
+  if (filters?.ltp) params.append('ltp', filters.ltp);
 
   const url = `${API_BASE_URL}/courses${params.toString() ? '?' + params.toString() : ''}`;
   const response = await fetch(url, {

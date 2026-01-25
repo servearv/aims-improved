@@ -88,8 +88,18 @@ export const listOfferings = async (filters = {}) => {
         params.push(`%${filters.title}%`);
     }
     if (filters.instructorId) {
-        query += ` AND EXISTS (SELECT 1 FROM course_instructors ci WHERE ci.offering_id = co.id AND ci.instructor_id = $${paramCount++})`;
-        params.push(filters.instructorId);
+        query += ` AND EXISTS (
+            SELECT 1 FROM course_instructors ci 
+            JOIN instructors i ON ci.instructor_id = i.instructor_id 
+            WHERE ci.offering_id = co.id 
+            AND (ci.instructor_id ILIKE $${paramCount} OR i.email ILIKE $${paramCount} OR i.dept ILIKE $${paramCount})
+        )`;
+        params.push(`%${filters.instructorId}%`);
+        paramCount++;
+    }
+    if (filters.ltp) {
+        query += ` AND c.ltp ILIKE $${paramCount++}`;
+        params.push(`%${filters.ltp}%`);
     }
 
     query += ` ORDER BY co.created_at DESC`;

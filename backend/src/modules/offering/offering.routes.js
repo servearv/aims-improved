@@ -18,6 +18,12 @@ router.get('/departments', offeringController.getDepartments);
 router.get('/courses/search', offeringController.searchCourses);
 router.get('/instructors/search', offeringController.searchInstructors);
 
+// Course Offering Proposals (must be BEFORE :id routes!)
+router.post('/offerings/propose', offeringController.proposeOffering);
+router.get('/offerings/pending', offeringController.getPendingProposals);
+router.post('/offerings/pending/:id/approve', offeringController.approveProposal);
+router.post('/offerings/pending/:id/reject', offeringController.rejectProposal);
+
 // Course Offerings CRUD
 router.get('/offerings', offeringController.getOfferings);
 router.post('/offerings', offeringController.createOffering);
@@ -31,15 +37,9 @@ router.post('/offerings/:id/instructors', offeringController.addInstructor);
 router.put('/offerings/:id/instructors/:instructorId', offeringController.updateInstructorCoordinator);
 router.delete('/offerings/:id/instructors/:instructorId', offeringController.removeInstructor);
 
-// Crediting Categorization
+// Crediting Categorization (kept for backward compatibility, but unused by frontend)
 router.get('/offerings/:id/crediting', offeringController.getOfferingCrediting);
 router.post('/offerings/:id/crediting', offeringController.addCrediting);
 router.delete('/offerings/:id/crediting/:creditId', offeringController.removeCrediting);
-
-// Course Offering Proposals (instructor proposes, admin approves)
-router.post('/offerings/propose', offeringController.proposeOffering);
-router.get('/offerings/pending', offeringController.getPendingProposals);
-router.post('/offerings/pending/:id/approve', offeringController.approveProposal);
-router.post('/offerings/pending/:id/reject', offeringController.rejectProposal);
 
 export default router;

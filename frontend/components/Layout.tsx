@@ -90,14 +90,13 @@ const Layout: React.FC = () => {
       case UserRole.STUDENT:
       default:
         return [
-          { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-          { label: 'Academics', icon: BookOpen, path: '/academics/registration' },
-          { label: 'Courses Offered', icon: ListFilter, path: '/academics/courses-offered' },
+          { label: 'Dashboard', icon: LayoutDashboard, path: '/student/dashboard' },
+          { label: 'Course Registration', icon: ClipboardCheck, path: '/student/registration' },
+          { label: 'Courses Offered', icon: ListFilter, path: '/student/courses' },
+          { label: 'Time Table', icon: CalendarDays, path: '/student/timetable' },
           { label: 'Academic Events', icon: CalendarRange, path: '/academics/events' },
-          { label: 'Grades', icon: GraduationCap, path: '/academics/grades' },
-          { label: 'Timetable', icon: CalendarDays, path: '/academics/timetable' },
-          { label: 'Student Record', icon: FileText, path: '/student-record' },
-          { label: 'Course Feedback', icon: MessageSquare, path: '/course-feedback' },
+          { label: 'Grades', icon: GraduationCap, path: '/student/grades' },
+          { label: 'Course Feedback', icon: MessageSquare, path: '/student/feedback' },
           { label: 'Finance', icon: CreditCard, path: '/finance' },
           ...common
         ];

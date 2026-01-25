@@ -53,10 +53,15 @@ const StudentRegistrationView: React.FC = () => {
 
   const handleEnroll = async (courseId: string) => {
     try {
-      await api.enrollInCourse(courseId, '2023-24 Autumn');
+      await api.enrollInCourse(courseId, '2025-II'); // Updated to current real session
       await fetchData();
-    } catch (err) {
+      alert('Enrollment request submitted successfully!');
+    } catch (err: any) {
       console.error('Enrollment failed', err);
+      // Show specific error from backend (Conflict, Credit Limit, etc.)
+      const errorMessage = err.response?.data?.error || err.message || 'Enrollment failed';
+      const errorDetails = err.response?.data?.details || '';
+      alert(`Error: ${errorMessage}\n${errorDetails}`);
     }
   };
 
@@ -84,21 +89,21 @@ const StudentRegistrationView: React.FC = () => {
         </div>
         <div className="divide-y divide-white/5">
           {courses.map(course => {
-            const existingRequest = getRequestForCourse(course.id);
+            const existingRequest = getRequestForCourse(course.course_id);
             const isPending = existingRequest && existingRequest.status !== RegistrationStatus.APPROVED && !existingRequest.status.includes('REJECTED');
             const isApproved = existingRequest?.status === RegistrationStatus.APPROVED;
 
             return (
-              <div key={course.id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
+              <div key={course.course_id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{course.code}</span>
-                    <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{course.name}</h4>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{course.course_id}</span>
+                    <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{course.title}</h4>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
                     <div className="flex items-center gap-1.5">
                       <User size={12} />
-                      {course.instructorName}
+                      {course.instructor_email || course.instructor_dept || 'TBA'}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Book size={12} />
@@ -106,7 +111,7 @@ const StudentRegistrationView: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock size={12} />
-                      {course.schedule}
+                      {course.timings || course.ltp || 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -118,7 +123,7 @@ const StudentRegistrationView: React.FC = () => {
                       {existingRequest.status.includes('REJECTED') && <span className="flex items-center gap-1 text-xs text-red-500 font-medium"><X size={14} /> Rejected</span>}
                     </div>
                   ) : (
-                    <Button size="sm" onClick={() => handleEnroll(course.id)} className="w-full sm:w-auto">Enroll</Button>
+                    <Button size="sm" onClick={() => handleEnroll(course.course_id)} className="w-full sm:w-auto">Enroll</Button>
                   )}
                 </div>
               </div>

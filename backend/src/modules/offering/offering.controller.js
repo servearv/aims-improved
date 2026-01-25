@@ -47,7 +47,8 @@ export const getOfferings = async (req, res) => {
             status: req.query.status,
             courseId: req.query.courseId,
             title: req.query.title,
-            instructorId: req.query.instructorId
+            instructorId: req.query.instructorId,
+            ltp: req.query.ltp
         };
 
         const offerings = await offeringModel.listOfferings(filters);

@@ -8,7 +8,11 @@ export const getAllCourses = async (req, res) => {
     const filters = {
       status: req.query.status,
       instructorId: req.query.instructorId,
-      type: req.query.type
+      type: req.query.type,
+      code: req.query.code,
+      title: req.query.title,
+      department: req.query.department,
+      ltp: req.query.ltp
     };
 
     const courses = await listCourses(filters);
@@ -17,6 +21,35 @@ export const getAllCourses = async (req, res) => {
     console.error('Error getting courses:', err);
     res.status(500).json({ error: err.message });
   }
+};
+
+/**
+ * Validates the L-T-P-S-C structure.
+ * Format: L-T-P-S-C (e.g., "3-1-2-6-4")
+ * Rules:
+ * S = 2L + P/2 - T
+ * C = L + P/2
+ */
+const validateLPTSC = (ltpString) => {
+  if (!ltpString) return { valid: true }; // Allow empty if not strict yet
+
+  const parts = ltpString.split('-').map(Number);
+  if (parts.length !== 5) return { valid: false, error: 'Invalid format. Use L-T-P-S-C' };
+
+  const [L, T, P, S, C] = parts;
+
+  const expectedS = (2 * L) + (P / 2) - T;
+  const expectedC = L + (P / 2);
+
+  if (S !== expectedS) {
+    return { valid: false, error: `Math mismatch: S should be ${expectedS} (2*${L} + ${P}/2 - ${T}), got ${S}` };
+  }
+
+  if (C !== expectedC) {
+    return { valid: false, error: `Math mismatch: C should be ${expectedC} (${L} + ${P}/2), got ${C}` };
+  }
+
+  return { valid: true };
 };
 
 export const getCourseById = async (req, res) => {
@@ -37,6 +70,12 @@ export const getCourseById = async (req, res) => {
 
 export const createCourseHandler = async (req, res) => {
   try {
+    const { ltp } = req.body;
+    const validation = validateLPTSC(ltp);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
     const course = await createCourse(req.body);
     res.status(201).json({ course });
   } catch (err) {
@@ -65,6 +104,63 @@ export const enrollInCourse = async (req, res) => {
   try {
     const { courseId, semester } = req.body;
     const studentEmail = req.user.email;
+
+    // --- ANTI-CLASH & CREDIT LOGIC START ---
+
+    // 1. Get New Course Details (Slot & Credits) from Offering
+    // We assume 'semester' matches 'session_id' in course_offerings
+    const newCourseQuery = `
+      SELECT co.slot_id, c.credits, c.title, s.timings as slot_timings
+      FROM course_offerings co
+      JOIN courses c ON co.course_id = c.course_id
+      LEFT JOIN slots s ON co.slot_id = s.slot_id
+      WHERE co.course_id = $1 AND co.session_id = $2
+    `;
+    const newCourseResult = await pool.query(newCourseQuery, [courseId, semester]);
+
+    if (newCourseResult.rowCount === 0) {
+      return res.status(404).json({ error: 'Course offering not found for this semester' });
+    }
+
+    const { slot_id: newSlotId, credits: newCredits, title: newTitle, slot_timings: newSlotTimings } = newCourseResult.rows[0];
+
+    // 2. Get Student's Current Enrollments (Slots & Credits)
+    // We only care about active enrollments (not dropped/rejected)
+    // We join with course_offerings to get the slot for *that* semester
+    const existingEnrollmentsQuery = `
+      SELECT sc.course_id, co.slot_id, c.credits, s.timings as slot_timings
+      FROM student_courses sc
+      JOIN course_offerings co ON sc.course_id = co.course_id AND sc.semester = co.session_id
+      JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN slots s ON co.slot_id = s.slot_id
+      WHERE sc.student_email = $1 
+        AND sc.semester = $2 
+        AND sc.status NOT IN ('Dropped', 'Rejected', 'Withdrawn')
+    `;
+    const existingEnrollmentsResult = await pool.query(existingEnrollmentsQuery, [studentEmail, semester]);
+    const existingCourses = existingEnrollmentsResult.rows;
+
+    // 3. Check for Slot Conflict (The Intersection Check)
+    const conflictingCourse = existingCourses.find(c => c.slot_id === newSlotId);
+    if (conflictingCourse) {
+      return res.status(409).json({
+        error: `Schedule Conflict: You are already registered for a course in Slot ${newSlotTimings || newSlotId}.`,
+        details: `Conflict with course ${conflictingCourse.course_id} (Slot ${conflictingCourse.slot_timings || conflictingCourse.slot_id})`
+      });
+    }
+
+    // 4. Check Credit Limit
+    const currentCredits = existingCourses.reduce((sum, c) => sum + c.credits, 0);
+    const totalCredits = currentCredits + newCredits;
+    // Limit is 24 as per prompt
+    if (totalCredits > 24) {
+      return res.status(400).json({
+        error: 'Credit Limit Exceeded',
+        details: `Current credits: ${currentCredits}. New total: ${totalCredits}. Limit: 24.`
+      });
+    }
+
+    // --- ANTI-CLASH & CREDIT LOGIC END ---
 
     // Create enrollment with PENDING_INSTRUCTOR status
     // Student enrolls -> Instructor approves -> Advisor approves -> Enrolled
