@@ -67,6 +67,11 @@ export const getStudentGrades = async (req, res) => {
     let cumulativePoints = 0;
 
     enrollments.forEach(enrollment => {
+      // Filter out pending requests and rejected enrollments from the grade card
+      if (['PENDING_INSTRUCTOR', 'PENDING_ADVISOR', 'REJECTED_INSTRUCTOR', 'REJECTED_ADVISOR'].includes(enrollment.status)) {
+        return;
+      }
+
       const semester = enrollment.semester || 'Unknown';
       if (!semesterMap[semester]) {
         semesterMap[semester] = {
