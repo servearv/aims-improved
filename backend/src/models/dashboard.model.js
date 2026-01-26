@@ -249,6 +249,12 @@ export const getAdminDashboardStats = async () => {
     const deptResult = await pool.query('SELECT COUNT(*) as count FROM departments');
     const departmentCount = parseInt(deptResult.rows[0]?.count || 0);
 
+    // Get pending course offering approvals
+    const pendingApprovalsResult = await pool.query(
+        `SELECT COUNT(*) as count FROM pending_course_offerings WHERE status = 'Pending'`
+    );
+    const pendingApprovals = parseInt(pendingApprovalsResult.rows[0]?.count || 0);
+
     return {
         userCounts: {
             total: Object.values(userCounts).reduce((a, b) => a + b, 0),
@@ -259,6 +265,7 @@ export const getAdminDashboardStats = async () => {
         },
         totalCourses,
         activeOfferings,
+        pendingApprovals,
         departmentCount,
         currentSession: currentSessionId,
         enrollments: {

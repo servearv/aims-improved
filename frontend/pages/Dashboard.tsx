@@ -339,16 +339,11 @@ const AdminDashboard = ({ stats }: { stats: any }) => {
             </div>
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
                title="Total Users"
                value={stats?.userCounts?.total || 0}
                icon={Users}
-            />
-            <StatCard
-               title="Active Courses"
-               value={stats?.totalCourses || 0}
-               icon={BookOpen}
             />
             <StatCard
                title="Active Offerings"
@@ -365,10 +360,10 @@ const AdminDashboard = ({ stats }: { stats: any }) => {
             />
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <div className="grid grid-cols-1 gap-6">
             <Card className="p-6">
                <h3 className="text-lg font-semibold mb-6 text-primary">User Breakdown</h3>
-               <div className="space-y-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                      <span className="text-blue-400">Students</span>
                      <span className="font-bold text-white">{stats?.userCounts?.students || 0}</span>
@@ -384,24 +379,6 @@ const AdminDashboard = ({ stats }: { stats: any }) => {
                   <div className="flex justify-between items-center p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
                      <span className="text-purple-400">Admins</span>
                      <span className="font-bold text-white">{stats?.userCounts?.admins || 0}</span>
-                  </div>
-               </div>
-            </Card>
-
-            <Card className="p-6">
-               <h3 className="text-lg font-semibold mb-6 text-primary">Enrollment Statistics</h3>
-               <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                     <span className="text-secondary">Total Enrollments</span>
-                     <span className="font-bold text-white">{stats?.enrollments?.total || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                     <span className="text-green-400">Approved</span>
-                     <span className="font-bold text-white">{stats?.enrollments?.approved || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                     <span className="text-yellow-400">Pending</span>
-                     <span className="font-bold text-white">{stats?.enrollments?.pending || 0}</span>
                   </div>
                </div>
             </Card>

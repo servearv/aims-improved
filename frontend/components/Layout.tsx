@@ -8,7 +8,7 @@ import {
   CreditCard,
   Settings,
   LogOut,
-  Bell,
+
   Menu,
   Search,
   ChevronRight,
@@ -250,10 +250,7 @@ const Layout: React.FC = () => {
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            <button className="relative p-2 text-secondary hover:text-primary hover:bg-glass rounded-full transition-colors">
-              <Bell size={18} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
-            </button>
+
           </div>
         </header>
 
