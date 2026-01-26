@@ -1,117 +1,272 @@
--- Clear existing data
-TRUNCATE TABLE users, instructors, faculty_advisors, students, slots, courses, student_courses, course_offerings CASCADE;
+--
+-- PostgreSQL database dump
+--
 
--- Users
-INSERT INTO users (email, role, is_active) VALUES
-('2023csb1106+s1@iitrpr.ac.in', 'STUDENT', true),
-('2023csb1106+i1@iitrpr.ac.in', 'INSTRUCTOR', true),
-('2023csb1106+i2@iitrpr.ac.in', 'INSTRUCTOR', true),
-('2023csb1106+i3@iitrpr.ac.in', 'INSTRUCTOR', true),
-('2023csb1106+a1@iitrpr.ac.in', 'ADVISOR', true),
-('2023csb1106+admin@iitrpr.ac.in', 'ADMIN', true),
-('2023csb1106+s2@iitrpr.ac.in', 'STUDENT', true)
-ON CONFLICT (email) DO NOTHING;
+\restrict JytB9xIhVahYv0WqcdW1fUqo0omzRw5eIugdTo2pWGmh5uzIAENCgvbTcXb9gS2
 
--- Instructors
-INSERT INTO instructors (instructor_id, email, dept) VALUES
-('i1', '2023csb1106+i1@iitrpr.ac.in', 'CSE'),
-('i2', '2023csb1106+i2@iitrpr.ac.in', 'EE'),
-('i3', '2023csb1106+i3@iitrpr.ac.in', 'ME'),
-('a1', '2023csb1106+a1@iitrpr.ac.in', 'CSE')
-ON CONFLICT (instructor_id) DO NOTHING;
+-- Dumped from database version 16.11
+-- Dumped by pg_dump version 16.11
 
--- Faculty Advisors
-INSERT INTO faculty_advisors (email, ins_id) VALUES
-('2023csb1106+a1@iitrpr.ac.in', 'a1')
-ON CONFLICT (email) DO NOTHING;
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
--- Students
-INSERT INTO students (email, entry_no, fa_id, batch, "group") VALUES
-('2023csb1106+s1@iitrpr.ac.in', '2023CSB1106', 'a1', 2023, 'A'),
-('2023csb1106+s2@iitrpr.ac.in', '2023CSB1112', 'a1', 2023, 'B')
-ON CONFLICT (email) DO NOTHING;
+--
+-- Data for Name: academic_sessions; Type: TABLE DATA; Schema: public; Owner: admin
+--
 
--- Slots (A-F)
--- Schema uses slot_id SERIAL, so we typically can't force text IDs easily without changing schema.
--- HOWEVER, we can just insert them and know their IDs if we reset sequences, OR distinct them by 'name' if schema allows.
--- Schema: slot_id (int), timings (varchar).
--- I'll use IDs 1-6 for A-F and put the details in 'timings' or add a description.
--- Actually the user code "Slot A" implies a name.
--- Let's check schema again: "timings VARCHAR(100)".
--- I will put "Slot A: Mon 9-10..." in timings. 
--- Wait, the logic requires strict slot checking. I should probably add a logic mapping slot_id to "A", "B" etc.
--- But for now I'll just insert them in order so 1=A, 2=B, etc.
-INSERT INTO slots (slot_id, timings, day_of_week) VALUES
-(1, 'Slot A', 'Mon,Wed,Thu'), -- A
-(2, 'Slot B', 'Mon,Wed,Thu'), -- B
-(3, 'Slot C', 'Mon,Wed,Thu'), -- C
-(4, 'Slot D', 'Unknown'),       -- D
-(5, 'Slot E', 'Unknown'),       -- E
-(6, 'Slot F', 'Unknown')        -- F
-ON CONFLICT (slot_id) DO UPDATE SET timings = EXCLUDED.timings;
+INSERT INTO public.academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES ('2025-II', 'current session', '2025-12-04', '2026-05-30', true, 'regular');
+INSERT INTO public.academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES ('2025-S', 'upcoming session (summer)', '2026-06-01', '2026-07-31', false, 'summer');
+INSERT INTO public.academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES ('2026-I', 'next session (regular)', '2026-08-01', '2026-12-03', false, 'regular');
+INSERT INTO public.academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES ('2024-I', 'Spring 2024', '2024-01-01', '2024-05-30', false, 'regular');
+INSERT INTO public.academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES ('2024-II', 'Fall 2024', '2024-08-01', '2024-12-15', false, 'regular');
+INSERT INTO public.academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES ('2025-I', 'Spring 2025', '2025-01-01', '2025-05-30', false, 'regular');
 
--- Departments
-INSERT INTO departments (dept_code, name) VALUES
-('CSE', 'Computer Science and Engineering'),
-('EE', 'Electrical Engineering'),
-('ME', 'Mechanical Engineering')
-ON CONFLICT (dept_code) DO NOTHING;
 
--- Courses (Real Data)
--- Format: L-T-P-S-C. Schema has ltp (varchar) and credits (int).
--- I will store full format in 'ltp' column like '3-1-2-6-4'.
--- Slot mapping: The user associates courses with slots via catalog. Schema has course.slot_id.
--- I'll map A=1, B=2, C=3, D=4, E=5, F=6.
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: admin
+--
 
-INSERT INTO courses (course_id, title, credits, slot_id, instructor_id, ltp, status) VALUES
--- CSE
-('CS201', 'Data Structures', 4, 1, 'i1', '3-1-2-6-4', 'Offered'),
-('CS202', 'Analysis and Design of Algorithms', 3, 2, 'i1', '3-1-0-5-3', 'Offered'),
-('CS203', 'Digital Logic Design', 4, 3, 'i1', '3-1-2-6-4', 'Offered'),
-('CS301', 'Database Management Systems', 4, 4, 'i1', '3-0-2-7-4', 'Offered'),
-('CS303', 'Operating Systems', 4, 5, 'i1', '3-0-2-7-4', 'Offered'),
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (15, '2023csb1106+s1@iitrpr.ac.in', 'STUDENT', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (16, '2023csb1106+i1@iitrpr.ac.in', 'INSTRUCTOR', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (17, '2023csb1106+i2@iitrpr.ac.in', 'INSTRUCTOR', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (18, '2023csb1106+i3@iitrpr.ac.in', 'INSTRUCTOR', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (19, '2023csb1106+a1@iitrpr.ac.in', 'ADVISOR', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (20, '2023csb1106+admin@iitrpr.ac.in', 'ADMIN', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
+INSERT INTO public.users (id, email, role, is_active, created_at, updated_at) VALUES (21, '2023csb1106+s2@iitrpr.ac.in', 'STUDENT', true, '2026-01-25 13:03:50.598295', '2026-01-25 13:03:50.598295');
 
--- EE
-('EE201', 'Signals and Systems', 3, 2, 'i2', '3-1-0-5-3', 'Offered'),
-('EE203', 'Digital Circuits', 3, 3, 'i2', '3-1-0-5-3', 'Offered'),
-('EE205', 'Electromechanics', 3, 1, 'i2', '3-1-0-5-3', 'Offered'),
-('EE207', 'Control Engineering', 3, 4, 'i2', '3-1-0-5-3', 'Offered'),
-('EE301', 'Analog Circuits', 3, 5, 'i2', '3-1-0-5-3', 'Offered'),
 
--- ME
-('MEL101', 'Continuum Mechanics', 4, 3, 'i3', '3-1-0-8-4', 'Offered'),
-('MEL201', 'Fluid Mechanics', 4, 1, 'i3', '3-1-0-8-4', 'Offered'),
-('MEL202', 'Manufacturing with Metallic Materials', 3, 2, 'i3', '3-0-0-6-3', 'Offered'),
-('MEL301', 'Heat and Mass Transfer', 4, 5, 'i3', '3-1-2-6-4', 'Offered'),
-('MEL302', 'Manufacturing Processes', 4, 4, 'i3', '3-0-2-7-4', 'Offered')
-ON CONFLICT (course_id) DO UPDATE SET 
-    title = EXCLUDED.title, 
-    ltp = EXCLUDED.ltp, 
-    slot_id = EXCLUDED.slot_id, 
-    credits = EXCLUDED.credits;
+--
+-- Data for Name: instructors; Type: TABLE DATA; Schema: public; Owner: admin
+--
 
--- Current Academic Session
-INSERT INTO academic_sessions (session_id, name, start_date, end_date, is_current, session_type) VALUES
-('2025-II', 'Current Session', '2025-01-01', '2025-05-30', true, 'regular')
-ON CONFLICT (session_id) DO NOTHING;
+INSERT INTO public.instructors (instructor_id, email, dept, created_at) VALUES ('i1', '2023csb1106+i1@iitrpr.ac.in', 'CSE', '2026-01-25 13:03:50.642125');
+INSERT INTO public.instructors (instructor_id, email, dept, created_at) VALUES ('i2', '2023csb1106+i2@iitrpr.ac.in', 'EE', '2026-01-25 13:03:50.642125');
+INSERT INTO public.instructors (instructor_id, email, dept, created_at) VALUES ('i3', '2023csb1106+i3@iitrpr.ac.in', 'ME', '2026-01-25 13:03:50.642125');
+INSERT INTO public.instructors (instructor_id, email, dept, created_at) VALUES ('a1', '2023csb1106+a1@iitrpr.ac.in', 'CSE', '2026-01-25 13:03:50.642125');
 
--- Offerings (Map all courses to current session so they are visible/approverd)
--- Status: OFFERED (Approved)
-INSERT INTO course_offerings (course_id, session_id, offering_dept, section, slot_id, status) VALUES
-('CS201', '2025-II', 'CSE', 'A', 1, 'Offered'),
-('CS202', '2025-II', 'CSE', 'A', 2, 'Offered'),
-('CS203', '2025-II', 'CSE', 'A', 3, 'Offered'),
-('CS301', '2025-II', 'CSE', 'A', 4, 'Offered'),
-('CS303', '2025-II', 'CSE', 'A', 5, 'Offered'),
-('EE201', '2025-II', 'EE', 'A', 2, 'Offered'),
-('EE203', '2025-II', 'EE', 'A', 3, 'Offered'),
-('EE205', '2025-II', 'EE', 'A', 1, 'Offered'),
-('EE207', '2025-II', 'EE', 'A', 4, 'Offered'),
-('EE301', '2025-II', 'EE', 'A', 5, 'Offered'),
-('MEL101', '2025-II', 'ME', 'A', 3, 'Offered'),
-('MEL201', '2025-II', 'ME', 'A', 1, 'Offered'),
-('MEL202', '2025-II', 'ME', 'A', 2, 'Offered'),
-('MEL301', '2025-II', 'ME', 'A', 5, 'Offered'),
-('MEL302', '2025-II', 'ME', 'A', 4, 'Offered')
-ON CONFLICT (course_id, session_id, section) DO NOTHING;
 
+--
+-- Data for Name: slots; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.slots (slot_id, timings, day_of_week, start_time, end_time, created_at) VALUES (1, 'Slot A', 'Mon,Wed,Thu', NULL, NULL, '2026-01-25 13:03:50.713797');
+INSERT INTO public.slots (slot_id, timings, day_of_week, start_time, end_time, created_at) VALUES (2, 'Slot B', 'Mon,Wed,Thu', NULL, NULL, '2026-01-25 13:03:50.713797');
+INSERT INTO public.slots (slot_id, timings, day_of_week, start_time, end_time, created_at) VALUES (3, 'Slot C', 'Mon,Wed,Thu', NULL, NULL, '2026-01-25 13:03:50.713797');
+INSERT INTO public.slots (slot_id, timings, day_of_week, start_time, end_time, created_at) VALUES (4, 'Slot D', 'Unknown', NULL, NULL, '2026-01-25 13:03:50.713797');
+INSERT INTO public.slots (slot_id, timings, day_of_week, start_time, end_time, created_at) VALUES (5, 'Slot E', 'Unknown', NULL, NULL, '2026-01-25 13:03:50.713797');
+INSERT INTO public.slots (slot_id, timings, day_of_week, start_time, end_time, created_at) VALUES (6, 'Slot F', 'Unknown', NULL, NULL, '2026-01-25 13:03:50.713797');
+
+
+--
+-- Data for Name: courses; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('CS201', 'Data Structures', 4, 1, 'i1', NULL, 'Offered', NULL, NULL, '3-1-2-6-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('CS202', 'Analysis and Design of Algorithms', 3, 2, 'i1', NULL, 'Offered', NULL, NULL, '3-1-0-5-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('CS203', 'Digital Logic Design', 4, 3, 'i1', NULL, 'Offered', NULL, NULL, '3-1-2-6-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('CS301', 'Database Management Systems', 4, 4, 'i1', NULL, 'Offered', NULL, NULL, '3-0-2-7-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('CS303', 'Operating Systems', 4, 5, 'i1', NULL, 'Offered', NULL, NULL, '3-0-2-7-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('EE201', 'Signals and Systems', 3, 2, 'i2', NULL, 'Offered', NULL, NULL, '3-1-0-5-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('EE203', 'Digital Circuits', 3, 3, 'i2', NULL, 'Offered', NULL, NULL, '3-1-0-5-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('EE205', 'Electromechanics', 3, 1, 'i2', NULL, 'Offered', NULL, NULL, '3-1-0-5-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('EE207', 'Control Engineering', 3, 4, 'i2', NULL, 'Offered', NULL, NULL, '3-1-0-5-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('EE301', 'Analog Circuits', 3, 5, 'i2', NULL, 'Offered', NULL, NULL, '3-1-0-5-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('MEL101', 'Continuum Mechanics', 4, 3, 'i3', NULL, 'Offered', NULL, NULL, '3-1-0-8-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('MEL201', 'Fluid Mechanics', 4, 1, 'i3', NULL, 'Offered', NULL, NULL, '3-1-0-8-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('MEL202', 'Manufacturing with Metallic Materials', 3, 2, 'i3', NULL, 'Offered', NULL, NULL, '3-0-0-6-3', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('MEL301', 'Heat and Mass Transfer', 4, 5, 'i3', NULL, 'Offered', NULL, NULL, '3-1-2-6-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+INSERT INTO public.courses (course_id, title, credits, slot_id, instructor_id, type, status, capacity, classroom, ltp, capa_cutoff, prereqs, open_for, created_at, updated_at) VALUES ('MEL302', 'Manufacturing Processes', 4, 4, 'i3', NULL, 'Offered', NULL, NULL, '3-0-2-7-4', NULL, NULL, NULL, '2026-01-25 13:03:50.731922', '2026-01-25 13:03:50.731922');
+
+
+--
+-- Data for Name: students; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.students (email, entry_no, fa_id, batch, "group", created_at) VALUES ('2023csb1106+s1@iitrpr.ac.in', '2023CSB1106', 'i1', 2023, 'A', '2026-01-25 13:03:50.677657');
+INSERT INTO public.students (email, entry_no, fa_id, batch, "group", created_at) VALUES ('2023csb1106+s2@iitrpr.ac.in', '2023CSB1112', 'i1', 2023, 'B', '2026-01-25 13:03:50.677657');
+
+
+--
+-- Data for Name: course_feedback; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+
+
+--
+-- Data for Name: departments; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.departments (dept_code, name) VALUES ('CSE', 'Computer Science and Engineering');
+INSERT INTO public.departments (dept_code, name) VALUES ('EE', 'Electrical Engineering');
+INSERT INTO public.departments (dept_code, name) VALUES ('ME', 'Mechanical Engineering');
+INSERT INTO public.departments (dept_code, name) VALUES ('CE', 'Civil Engineering');
+INSERT INTO public.departments (dept_code, name) VALUES ('MATH', 'Mathematics');
+INSERT INTO public.departments (dept_code, name) VALUES ('PHY', 'Physics');
+INSERT INTO public.departments (dept_code, name) VALUES ('HSS', 'Humanities and Social Sciences');
+INSERT INTO public.departments (dept_code, name) VALUES ('CHEM', 'Chemistry');
+
+
+--
+-- Data for Name: course_offerings; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.course_offerings (id, course_id, session_id, offering_dept, section, slot_id, status, enrolment_count, created_at, updated_at) VALUES (36, 'MEL101', '2025-II', 'CSE', NULL, 3, 'Offered', 0, '2026-01-26 15:09:43.861306', '2026-01-26 15:09:43.861306');
+
+
+--
+-- Data for Name: course_instructors; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.course_instructors (id, offering_id, instructor_id, is_coordinator, created_at) VALUES (10, 36, 'i3', true, '2026-01-26 15:09:43.861306');
+
+
+--
+-- Data for Name: crediting_categorization; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+
+
+--
+-- Data for Name: email_verifications; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+
+
+--
+-- Data for Name: faculty_advisors; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.faculty_advisors (email, ins_id, created_at) VALUES ('2023csb1106+a1@iitrpr.ac.in', 'a1', '2026-01-25 13:03:50.665083');
+
+
+--
+-- Data for Name: pending_course_offerings; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.pending_course_offerings (id, course_id, session_id, offering_dept, slot_id, proposed_by, instructor_ids, status, created_at, updated_at) VALUES (12, 'MEL101', '2025-II', 'CSE', 3, '2023csb1106+i3@iitrpr.ac.in', '{}', 'Approved', '2026-01-26 15:08:21.513713', '2026-01-26 15:09:43.861306');
+
+
+--
+-- Data for Name: student_courses; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (27, '2023csb1106+s1@iitrpr.ac.in', 'CS201', '2024-I', 'Completed', 'A', 10.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (28, '2023csb1106+s1@iitrpr.ac.in', 'CS202', '2024-I', 'Completed', 'A-', 9.00, 3, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (29, '2023csb1106+s1@iitrpr.ac.in', 'EE201', '2024-I', 'Completed', 'B+', 8.00, 3, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (30, '2023csb1106+s1@iitrpr.ac.in', 'MEL101', '2024-I', 'Completed', 'A', 10.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (31, '2023csb1106+s1@iitrpr.ac.in', 'CS203', '2024-II', 'Completed', 'A+', 10.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (32, '2023csb1106+s1@iitrpr.ac.in', 'CS301', '2024-II', 'Completed', 'A', 10.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (33, '2023csb1106+s1@iitrpr.ac.in', 'EE203', '2024-II', 'Completed', 'B', 8.00, 3, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (34, '2023csb1106+s1@iitrpr.ac.in', 'MEL201', '2024-II', 'Completed', 'A-', 9.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (35, '2023csb1106+s1@iitrpr.ac.in', 'CS303', '2025-I', 'Completed', 'A', 10.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (36, '2023csb1106+s1@iitrpr.ac.in', 'EE205', '2025-I', 'Completed', 'B+', 8.00, 3, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (37, '2023csb1106+s1@iitrpr.ac.in', 'EE207', '2025-I', 'Completed', 'A-', 9.00, 3, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (38, '2023csb1106+s1@iitrpr.ac.in', 'MEL302', '2025-I', 'Completed', 'B', 8.00, 4, '2026-01-25 13:31:13.090842', '2026-01-25 13:31:13.090842');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (39, '2023csb1106+s2@iitrpr.ac.in', 'CS201', '2024-I', 'Completed', 'B+', 8.00, 4, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (40, '2023csb1106+s2@iitrpr.ac.in', 'EE201', '2024-I', 'Completed', 'A', 10.00, 3, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (41, '2023csb1106+s2@iitrpr.ac.in', 'MEL202', '2024-I', 'Completed', 'B', 8.00, 3, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (42, '2023csb1106+s2@iitrpr.ac.in', 'CS202', '2024-II', 'Completed', 'A-', 9.00, 3, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (43, '2023csb1106+s2@iitrpr.ac.in', 'CS203', '2024-II', 'Completed', 'B+', 8.00, 4, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (44, '2023csb1106+s2@iitrpr.ac.in', 'EE203', '2024-II', 'Completed', 'A', 10.00, 3, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (45, '2023csb1106+s2@iitrpr.ac.in', 'CS301', '2025-I', 'Completed', 'A', 10.00, 4, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (46, '2023csb1106+s2@iitrpr.ac.in', 'EE205', '2025-I', 'Completed', 'A-', 9.00, 3, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (47, '2023csb1106+s2@iitrpr.ac.in', 'MEL301', '2025-I', 'Completed', 'B+', 8.00, 4, '2026-01-25 13:33:26.814574', '2026-01-25 13:33:26.814574');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (84, '2023csb1106+s1@iitrpr.ac.in', 'MEL101', '2025-II', 'PENDING_INSTRUCTOR', NULL, NULL, NULL, '2026-01-26 10:07:20.971817', '2026-01-26 10:07:20.971817');
+INSERT INTO public.student_courses (id, student_email, course_id, semester, status, grade, grade_points, credits_earned, created_at, updated_at) VALUES (85, '2023csb1106+s2@iitrpr.ac.in', 'MEL101', '2025-II', 'PENDING_INSTRUCTOR', NULL, NULL, NULL, '2026-01-26 12:09:45.714761', '2026-01-26 12:09:45.714761');
+
+
+--
+-- Data for Name: student_payments; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+
+
+--
+-- Data for Name: student_records; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+
+
+--
+-- Name: course_feedback_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.course_feedback_id_seq', 1, false);
+
+
+--
+-- Name: course_instructors_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.course_instructors_id_seq', 10, true);
+
+
+--
+-- Name: course_offerings_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.course_offerings_id_seq', 36, true);
+
+
+--
+-- Name: crediting_categorization_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.crediting_categorization_id_seq', 8, true);
+
+
+--
+-- Name: pending_course_offerings_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.pending_course_offerings_id_seq', 12, true);
+
+
+--
+-- Name: slots_slot_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.slots_slot_id_seq', 1, false);
+
+
+--
+-- Name: student_courses_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.student_courses_id_seq', 85, true);
+
+
+--
+-- Name: student_payments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.student_payments_id_seq', 1, true);
+
+
+--
+-- Name: student_records_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.student_records_id_seq', 6, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 21, true);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict JytB9xIhVahYv0WqcdW1fUqo0omzRw5eIugdTo2pWGmh5uzIAENCgvbTcXb9gS2

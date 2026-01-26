@@ -22,7 +22,37 @@ async function seedDatabase() {
             console.error('❌ Seed file not found at:', seedPath);
             process.exit(1);
         }
-        const seedSql = fs.readFileSync(seedPath, 'utf8');
+        let seedSql = fs.readFileSync(seedPath, 'utf8');
+
+        // Filter out psql meta-commands (lines starting with \) as they cannot be executed via pg driver
+        seedSql = seedSql
+            .split('\n')
+            .filter(line => !line.trim().startsWith('\\'))
+            .join('\n');
+
+        // Truncate all tables before seeding to allow re-running
+        console.log('🧹 Clearing existing data...');
+        await pool.query(`
+            TRUNCATE TABLE 
+                student_payments,
+                student_records,
+                course_feedback,
+                student_courses,
+                course_instructors,
+                course_offerings,
+                pending_course_offerings,
+                crediting_categorization,
+                email_verifications,
+                courses,
+                slots,
+                students,
+                faculty_advisors,
+                instructors,
+                departments,
+                academic_sessions,
+                users
+            RESTART IDENTITY CASCADE
+        `);
 
         console.log('🌱 Seeding database...');
         await pool.query(seedSql);

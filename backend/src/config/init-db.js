@@ -28,7 +28,12 @@ export async function initDatabase() {
       // Run seed.sql if no users exist
       const seedPath = path.join(__dirname, '../../seed.sql');
       if (fs.existsSync(seedPath)) {
-        const seed = fs.readFileSync(seedPath, 'utf8');
+        let seed = fs.readFileSync(seedPath, 'utf8');
+        // Filter out psql meta-commands (lines starting with \) as they cannot be executed via pg driver
+        seed = seed
+          .split('\n')
+          .filter(line => !line.trim().startsWith('\\'))
+          .join('\n');
         await pool.query(seed);
         console.log('✅ Database seeded successfully');
       }
