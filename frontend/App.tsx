@@ -17,6 +17,7 @@ import OfferedCoursesGrid from './pages/Faculty/OfferedCoursesGrid';
 import CourseOfferingDetails from './pages/Faculty/CourseOfferingDetails';
 import UploadGrades from './pages/Faculty/UploadGrades';
 import AdviseeList from './pages/Advisor/AdviseeList';
+import EnrollmentRequests from './pages/Faculty/EnrollmentRequests';
 import { useAppStore } from './store';
 
 // Student Imports
@@ -90,6 +91,7 @@ const App: React.FC = () => {
               <Route path="offerings" element={<OfferedCoursesGrid />} />
               <Route path="offerings/new" element={<CourseOfferingDetails />} />
               <Route path="offerings/:id" element={<CourseOfferingDetails />} />
+              <Route path="approvals" element={<EnrollmentRequests />} />
               <Route path="grades/upload" element={<UploadGrades />} />
             </Route>
 

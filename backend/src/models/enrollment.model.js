@@ -94,16 +94,23 @@ export const getStudentEnrollments = async (studentEmail, semester = null) => {
   return result.rows;
 };
 
-export const getCourseEnrollments = async (courseId, semester = null) => {
+export const getCourseEnrollments = async (courseId, semester = null, includeAllStatuses = false) => {
   let query = `SELECT sc.*, s.entry_no, s.batch, s."group"
                FROM student_courses sc
                JOIN students s ON sc.student_email = s.email
                WHERE sc.course_id = $1`;
   const params = [courseId];
+  let paramCount = 2;
 
   if (semester) {
-    query += ` AND sc.semester = $2`;
+    query += ` AND sc.semester = $${paramCount++}`;
     params.push(semester);
+  }
+
+  // By default, only return approved enrollments (for grading purposes)
+  // APPROVED status means the student completed the enrollment workflow
+  if (!includeAllStatuses) {
+    query += ` AND UPPER(sc.status) IN ('APPROVED', 'ENROLLED', 'COMPLETED')`;
   }
 
   query += ` ORDER BY s.entry_no`;

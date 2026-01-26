@@ -14,10 +14,10 @@ const CourseRegistration: React.FC = () => {
         try {
             setLoading(true);
             const [coursesData, reqsData] = await Promise.all([
-                api.getAllCourses(),
-                api.getStudentCourses()
+                api.getOfferings({ sessionId: '2025-II', status: 'Offered' }),
+                api.getStudentCourses('2025-II')
             ]);
-            setCourses(coursesData.courses);
+            setCourses(coursesData.offerings);
             setRequests(reqsData.enrollments || []);
         } catch (err) {
             console.error('Failed to fetch student data', err);
@@ -55,7 +55,7 @@ const CourseRegistration: React.FC = () => {
                 <div className="p-5 border-b border-white/10 bg-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h3 className="font-semibold text-white">Available Courses</h3>
-                        <p className="text-xs text-gray-400 mt-1">Select electives for the current semester.</p>
+                        <p className="text-xs text-gray-400 mt-1">Select electives for the current semester (2025-II).</p>
                     </div>
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
@@ -67,47 +67,58 @@ const CourseRegistration: React.FC = () => {
                     </div>
                 </div>
                 <div className="divide-y divide-white/5">
-                    {courses.map(course => {
-                        const existingRequest = getRequestForCourse(course.course_id);
-                        const isPending = existingRequest && existingRequest.status !== RegistrationStatus.APPROVED && !existingRequest.status.includes('REJECTED');
-                        const isApproved = existingRequest?.status === RegistrationStatus.APPROVED;
+                    {courses.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 text-sm">
+                            No courses offered for this session yet.
+                        </div>
+                    ) : (
+                        courses.map((course: any) => { // Using any for now as offering structure differs from Course type
+                            const existingRequest = getRequestForCourse(course.course_id);
+                            const isPending = existingRequest && existingRequest.status !== RegistrationStatus.APPROVED && !existingRequest.status.includes('REJECTED');
+                            const isApproved = existingRequest?.status === RegistrationStatus.APPROVED;
 
-                        return (
-                            <div key={course.course_id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{course.course_id}</span>
-                                        <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{course.title}</h4>
+                            // Format instructor string
+                            const instructorDisplay = course.instructors && course.instructors.length > 0
+                                ? course.instructors.map((i: any) => i.email).join(', ')
+                                : 'TBA';
+
+                            return (
+                                <div key={course.id || course.course_id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{course.course_id}</span>
+                                            <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{course.title}</h4>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                                            <div className="flex items-center gap-1.5" title={instructorDisplay}>
+                                                <User size={12} />
+                                                <span className="truncate max-w-[200px]">{instructorDisplay}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <Book size={12} />
+                                                {course.credits} Credits
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <Clock size={12} />
+                                                {course.slot_timings || course.ltp || 'N/A'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-                                        <div className="flex items-center gap-1.5">
-                                            <User size={12} />
-                                            {course.instructor_email || course.instructor_dept || 'TBA'}
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <Book size={12} />
-                                            {course.credits} Credits
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <Clock size={12} />
-                                            {course.timings || course.ltp || 'N/A'}
-                                        </div>
+                                    <div>
+                                        {existingRequest ? (
+                                            <div className="flex items-center gap-2">
+                                                {isApproved && <span className="flex items-center gap-1 text-xs text-green-500 font-medium"><Check size={14} /> Enrolled</span>}
+                                                {isPending && <span className="flex items-center gap-1 text-xs text-yellow-500 font-medium"><Clock size={14} /> Processing</span>}
+                                                {existingRequest.status.includes('REJECTED') && <span className="flex items-center gap-1 text-xs text-red-500 font-medium"><X size={14} /> Rejected</span>}
+                                            </div>
+                                        ) : (
+                                            <Button size="sm" onClick={() => handleEnroll(course.course_id)} className="w-full sm:w-auto">Enroll</Button>
+                                        )}
                                     </div>
                                 </div>
-                                <div>
-                                    {existingRequest ? (
-                                        <div className="flex items-center gap-2">
-                                            {isApproved && <span className="flex items-center gap-1 text-xs text-green-500 font-medium"><Check size={14} /> Enrolled</span>}
-                                            {isPending && <span className="flex items-center gap-1 text-xs text-yellow-500 font-medium"><Clock size={14} /> Processing</span>}
-                                            {existingRequest.status.includes('REJECTED') && <span className="flex items-center gap-1 text-xs text-red-500 font-medium"><X size={14} /> Rejected</span>}
-                                        </div>
-                                    ) : (
-                                        <Button size="sm" onClick={() => handleEnroll(course.course_id)} className="w-full sm:w-auto">Enroll</Button>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })
+                    )}
                 </div>
             </Card>
 

@@ -68,7 +68,7 @@ const Layout: React.FC = () => {
       case UserRole.INSTRUCTOR:
         return [
           { label: 'Faculty Dashboard', icon: LayoutDashboard, path: '/' },
-          { label: 'My Courses', icon: BookOpen, path: '/academics/courses-offered' },
+
           { label: 'Offered Courses', icon: ListFilter, path: '/faculty/offerings' },
           { label: 'Offer a Course', icon: GraduationCap, path: '/faculty/offerings/new' },
           { label: 'Grading Portal', icon: ClipboardCheck, path: '/faculty/grading' },

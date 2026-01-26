@@ -125,10 +125,10 @@ const CourseOfferingDetails: React.FC = () => {
 
     // Course search
     const handleCourseSearch = useCallback(async (query: string) => {
-        if (query.length < 2) {
-            setCourseResults([]);
-            return;
-        }
+        // if (query.length < 2) {
+        //     setCourseResults([]);
+        //     return;
+        // }
         setSearchingCourses(true);
         try {
             const data = await api.searchCourses(query);
@@ -326,7 +326,14 @@ const CourseOfferingDetails: React.FC = () => {
                                         </div>
                                         <Button
                                             variant="secondary"
-                                            onClick={() => setShowCourseLookup(!showCourseLookup)}
+                                            onClick={() => {
+                                                const newState = !showCourseLookup;
+                                                setShowCourseLookup(newState);
+                                                if (newState) {
+                                                    setCourseSearch('');
+                                                    handleCourseSearch('');
+                                                }
+                                            }}
                                         >
                                             {showCourseLookup ? 'Cancel' : 'Lookup'}
                                         </Button>

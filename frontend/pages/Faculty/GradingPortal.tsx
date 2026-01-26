@@ -78,13 +78,27 @@ const GradingPortal: React.FC = () => {
       ));
    };
 
+   // Grade to grade points mapping
+   const gradePointMap: { [key: string]: number | null } = {
+      'A+': 10.0, 'A': 10.0, 'A-': 9.0,
+      'B+': 8.0, 'B': 7.0, 'B-': 6.0,
+      'C+': 5.0, 'C': 4.0, 'D': 3.0,
+      'F': 0.0, 'S': 10.0, 'X': 0.0,
+      'I': null, 'W': null
+   };
+
    const saveGrades = async () => {
       setSaving(true);
       try {
          const dirtyRecords = enrollments.filter(e => e.isDirty);
-         await Promise.all(dirtyRecords.map(e =>
-            api.updateEnrollment(e.id, { grade: e.grade || undefined })
-         ));
+         await Promise.all(dirtyRecords.map(e => {
+            const grade = e.grade?.toUpperCase() || '';
+            const gradePoints = gradePointMap[grade] ?? undefined;
+            return api.updateEnrollment(e.id, {
+               grade: grade || undefined,
+               gradePoints: gradePoints !== null ? gradePoints : undefined
+            });
+         }));
          await fetchGrades();
          alert('Grades saved successfully!');
       } catch (e) {

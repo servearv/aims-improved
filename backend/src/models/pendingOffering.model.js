@@ -85,7 +85,38 @@ export const approveProposal = async (id) => {
         const offering = offeringResult.rows[0];
 
         // Add instructors
-        const instructorIds = proposal.instructor_ids || [];
+        let instructorIds = proposal.instructor_ids || [];
+
+        // Ensure instructorIds is a proper array before we work with it
+        if (!Array.isArray(instructorIds)) {
+            // Log warning if it's not null but also not an array (unexpected)
+            if (instructorIds) console.warn('Warning: instructor_ids is not an array:', instructorIds);
+            instructorIds = [];
+        }
+
+        try {
+            // Attempt to find the proposer's instructor ID
+            const proposerResult = await client.query(
+                'SELECT instructor_id FROM instructors WHERE email = $1',
+                [proposal.proposed_by]
+            );
+
+            if (proposerResult.rows.length > 0) {
+                const proposerId = proposerResult.rows[0].instructor_id;
+
+                // Add proposer as coordinator if not already present
+                if (!instructorIds.includes(proposerId)) {
+                    // Prepend to ensure they are the first aspect (Coordinator)
+                    instructorIds = [proposerId, ...instructorIds];
+                }
+            } else {
+                console.log(`Proposer ${proposal.proposed_by} is not in instructors table. Skipping auto-assign.`);
+            }
+        } catch (err) {
+            // Catch error so the course is still approved even if auto-assign fails
+            console.error('Error in instructor auto-assignment:', err);
+        }
+
         for (let i = 0; i < instructorIds.length; i++) {
             await client.query(
                 `INSERT INTO course_instructors (offering_id, instructor_id, is_coordinator)

@@ -180,13 +180,13 @@ const FacultyDashboard = ({ stats }: { stats: any }) => {
             <Card className="p-6">
                <h3 className="text-lg font-semibold mb-4 text-primary">Quick Actions</h3>
                <div className="space-y-3">
-                  <Button variant="secondary" className="w-full justify-start">
+                  <Button variant="secondary" className="w-full justify-start" onClick={() => window.location.hash = '#/faculty/approvals'}>
                      <Users size={16} className="mr-3" /> View Enrollment Requests
                   </Button>
-                  <Button variant="secondary" className="w-full justify-start">
+                  <Button variant="secondary" className="w-full justify-start" onClick={() => window.location.hash = '#/faculty/offerings'}>
                      <BookOpen size={16} className="mr-3" /> Manage Course Offerings
                   </Button>
-                  <Button variant="secondary" className="w-full justify-start">
+                  <Button variant="secondary" className="w-full justify-start" onClick={() => window.location.hash = '#/faculty/grading'}>
                      <FileText size={16} className="mr-3" /> Enter Grades
                   </Button>
                </div>

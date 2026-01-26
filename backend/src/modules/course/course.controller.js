@@ -224,10 +224,12 @@ export const enrollBatchHandler = async (req, res) => {
 export const getRegistrationRequests = async (req, res) => {
   try {
     const { status, semester } = req.query;
+    const userRole = req.user.role;
+    const userEmail = req.user.email;
 
     let query = `SELECT sc.*, s.entry_no, s.batch, c.title as course_title, c.credits
                  FROM student_courses sc
-                 JOIN students s ON sc.student_email = s.email
+                 LEFT JOIN students s ON sc.student_email = s.email
                  JOIN courses c ON sc.course_id = c.course_id
                  WHERE 1=1`;
     const params = [];
@@ -243,8 +245,22 @@ export const getRegistrationRequests = async (req, res) => {
       params.push(semester);
     }
 
-    // Role-based filtering (optional, but good practice)
-    // For Advisor, we might want to filter by advisees, but for now we show all as per request
+    // Role-based filtering
+    if (userRole === 'INSTRUCTOR') {
+      const myCourses = await getInstructorCourses(userEmail);
+      const courseIds = myCourses.map(c => c.id);
+
+      if (courseIds.length === 0) {
+        // Instructor teaches no courses, so no requests to show
+        return res.json({ requests: [] });
+      }
+
+      query += ` AND sc.course_id = ANY($${paramCount++})`;
+      params.push(courseIds);
+    }
+
+    // For Advisor - filter by advisees (Optional, if "s.advisor_id" exists or similar)
+    // if (userRole === 'ADVISOR') { ... }
 
     query += ` ORDER BY sc.created_at DESC`;
 
@@ -269,31 +285,62 @@ export const updateRegistrationStatusHandler = async (req, res) => {
     }
 
     let newStatus = status;
+    const currentStatus = currentEnrollment.status;
 
-    // If action is provided, determine new status based on role and current status
-    if (action) {
-      if (action === 'approve') {
-        if (userRole === 'INSTRUCTOR' && currentEnrollment.status === 'PENDING_INSTRUCTOR') {
+    // Validate and determine new status based on role and current status
+    // This works for both action-based and direct status updates
+    if (action === 'approve' || status === 'PENDING_ADVISOR' || status === 'APPROVED') {
+      // Instructor approval flow: PENDING_INSTRUCTOR -> PENDING_ADVISOR
+      if (userRole === 'INSTRUCTOR') {
+        if (currentStatus === 'PENDING_INSTRUCTOR') {
           newStatus = 'PENDING_ADVISOR';
-        } else if (userRole === 'ADVISOR' && currentEnrollment.status === 'PENDING_ADVISOR') {
-          newStatus = 'Approved';
-        } else if (userRole === 'ADMIN') {
-          // Admin can approve directly to any status
-          newStatus = status || 'Approved';
         } else {
-          return res.status(403).json({ error: 'Not authorized to approve at this stage' });
+          return res.status(403).json({ error: 'Not authorized to approve at this stage. Current status: ' + currentStatus });
         }
-      } else if (action === 'reject') {
-        if (userRole === 'INSTRUCTOR' && currentEnrollment.status === 'PENDING_INSTRUCTOR') {
+      }
+      // Advisor approval flow: PENDING_ADVISOR -> APPROVED
+      else if (userRole === 'ADVISOR') {
+        if (currentStatus === 'PENDING_ADVISOR') {
+          newStatus = 'APPROVED'; // Use uppercase to match frontend enum
+        } else {
+          return res.status(403).json({ error: 'Not authorized to approve at this stage. Current status: ' + currentStatus });
+        }
+      }
+      // Admin can approve directly to any status
+      else if (userRole === 'ADMIN') {
+        newStatus = status || 'APPROVED';
+      } else {
+        return res.status(403).json({ error: 'Not authorized to approve enrollments' });
+      }
+    }
+    else if (action === 'reject' || status === 'REJECTED_INSTRUCTOR' || status === 'REJECTED_ADVISOR') {
+      // Instructor rejection
+      if (userRole === 'INSTRUCTOR') {
+        if (currentStatus === 'PENDING_INSTRUCTOR') {
           newStatus = 'REJECTED_INSTRUCTOR';
-        } else if (userRole === 'ADVISOR' && currentEnrollment.status === 'PENDING_ADVISOR') {
-          newStatus = 'REJECTED_ADVISOR';
-        } else if (userRole === 'ADMIN') {
-          newStatus = 'Rejected';
         } else {
           return res.status(403).json({ error: 'Not authorized to reject at this stage' });
         }
       }
+      // Advisor rejection
+      else if (userRole === 'ADVISOR') {
+        if (currentStatus === 'PENDING_ADVISOR') {
+          newStatus = 'REJECTED_ADVISOR';
+        } else {
+          return res.status(403).json({ error: 'Not authorized to reject at this stage' });
+        }
+      }
+      // Admin can reject
+      else if (userRole === 'ADMIN') {
+        newStatus = status || 'REJECTED';
+      } else {
+        return res.status(403).json({ error: 'Not authorized to reject enrollments' });
+      }
+    }
+    // For grade updates or other status changes (only allowed for instructors/admins)
+    else if (grade !== undefined || gradePoints !== undefined) {
+      // Grade updates are allowed without status change
+      newStatus = currentStatus;
     }
 
     const enrollment = await updateEnrollment(id, {

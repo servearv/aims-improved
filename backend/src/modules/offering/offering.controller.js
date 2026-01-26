@@ -226,10 +226,11 @@ export const removeCrediting = async (req, res) => {
 export const searchCourses = async (req, res) => {
     try {
         const { q } = req.query;
-        if (!q || q.length < 2) {
-            return res.json({ courses: [] });
-        }
-        const courses = await offeringModel.searchCourses(q);
+        console.log(`[DEBUG] searchCourses query: "${q}"`);
+
+        // Allow empty query to return default list
+        const courses = await offeringModel.searchCourses(q || '');
+        console.log(`[DEBUG] searchCourses found ${courses.length} results`);
         res.json({ courses });
     } catch (err) {
         console.error('Error searching courses:', err);

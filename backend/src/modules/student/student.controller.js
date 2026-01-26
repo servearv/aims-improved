@@ -68,7 +68,9 @@ export const getStudentGrades = async (req, res) => {
 
     enrollments.forEach(enrollment => {
       // Filter out pending requests and rejected enrollments from the grade card
-      if (['PENDING_INSTRUCTOR', 'PENDING_ADVISOR', 'REJECTED_INSTRUCTOR', 'REJECTED_ADVISOR'].includes(enrollment.status)) {
+      // Only show courses that are approved/enrolled (regardless of case)
+      const status = (enrollment.status || '').toUpperCase();
+      if (status.includes('PENDING') || status.includes('REJECTED') || status === 'DROPPED' || status === 'WITHDRAWN') {
         return;
       }
 

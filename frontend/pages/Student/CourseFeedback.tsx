@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { Card, Button, Input } from '../components/ui';
-import { useAppStore } from '../store';
-import { submitCourseFeedback } from '../utils/api';
+import { Card, Button, Input } from '../../components/ui';
+import { useAppStore } from '../../store';
+import { submitCourseFeedback } from '../../utils/api';
 
 const CourseFeedback: React.FC = () => {
   const { courses } = useAppStore();
