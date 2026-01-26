@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { User, UserRole, RegistrationRequest, RegistrationStatus, Course } from './types';
-import { MOCK_USERS, INITIAL_REQUESTS, MOCK_COURSES } from './constants';
+import {
+  getAllCourses,
+  getRegistrationRequests,
+  getStudentCourses,
+  enrollInCourse,
+  updateRegistrationStatus
+} from './utils/api';
 
 interface AppState {
   theme: 'light' | 'dark';
@@ -11,26 +17,33 @@ interface AppState {
   requests: RegistrationRequest[];
 
   // Actions
-  init: () => void;
+  init: () => Promise<void>;
   toggleTheme: () => void;
-  login: (email: string, user?: User, token?: string) => void;
+  login: (email: string, user: User, token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
 
-  // Registration Actions
-  addRequest: (courseId: string) => void;
-  updateRequestStatus: (requestId: string, newStatus: RegistrationStatus) => void;
+  // Data Actions
+  fetchData: () => Promise<void>;
+  enrollCourse: (courseId: string, semester: string) => Promise<void>;
+  handleRequestAction: (requestId: string, status: RegistrationStatus) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  theme: 'dark', // Default
-  isAuthenticated: false, // Default to false to show Login screen first
-  currentUser: MOCK_USERS.student,
+  theme: 'dark',
+  isAuthenticated: false,
+  currentUser: {
+    id: '',
+    name: '',
+    email: '',
+    role: UserRole.STUDENT,
+    status: 'Active'
+  } as User,
   token: null,
-  courses: MOCK_COURSES,
-  requests: INITIAL_REQUESTS,
+  courses: [],
+  requests: [],
 
-  init: () => {
+  init: async () => {
     // Sync across tabs
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'auth_token') {
@@ -44,6 +57,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               token: e.newValue,
               currentUser: JSON.parse(userStr)
             });
+            get().fetchData();
           }
         }
       }
@@ -59,9 +73,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         token,
         currentUser: JSON.parse(userStr)
       });
+      await get().fetchData();
     }
 
-    // Return cleanup (though in this singleton store it's usually fine)
     return () => window.removeEventListener('storage', handleStorageChange);
   },
 
@@ -69,38 +83,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' }));
   },
 
-  login: (email: string, user?: User, token?: string) => {
-    if (user && token) {
-      // Backend authentication - use actual user data
-      set({
-        isAuthenticated: true,
-        currentUser: user,
-        token: token
-      });
-      // Store token in localStorage
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-    } else {
-      // Fallback to mock logic for demo
-      let userToSet = MOCK_USERS.student;
-
-      if (email.includes('prof') || email.includes('dr')) {
-        userToSet = MOCK_USERS.instructor;
-      } else if (email.includes('advisor')) {
-        userToSet = MOCK_USERS.advisor;
-      } else if (email.includes('admin')) {
-        userToSet = MOCK_USERS.admin;
-      }
-
-      const finalUser = { ...userToSet, email: email, availableRoles: [userToSet.role] };
-
-      set({
-        isAuthenticated: true,
-        currentUser: finalUser,
-        token: null
-      });
-      localStorage.setItem('user', JSON.stringify(finalUser));
-    }
+  login: (email, user, token) => {
+    set({
+      isAuthenticated: true,
+      currentUser: user,
+      token: token
+    });
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    get().fetchData();
   },
 
   logout: () => {
@@ -108,7 +99,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.removeItem('user');
     set({
       isAuthenticated: false,
-      token: null
+      token: null,
+      courses: [],
+      requests: []
     });
   },
 
@@ -120,44 +113,77 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      currentUser: { ...state.currentUser, role }
-    }));
-    // Sync to localStorage so other tabs know the current role
-    localStorage.setItem('user', JSON.stringify({ ...currentUser, role }));
+    const updatedUser = { ...currentUser, role };
+    set({ currentUser: updatedUser });
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    get().fetchData();
   },
 
-  addRequest: (courseId) => {
-    const { currentUser, courses, requests } = get();
-    const course = courses.find(c => c.id === courseId);
-    if (!course) return;
+  fetchData: async () => {
+    const { token, currentUser } = get();
+    if (!token) return;
 
-    // Check if already exists
-    if (requests.find(r => r.courseId === courseId && r.studentId === currentUser.id)) {
-      return;
+    try {
+      // Fetch Courses
+      const coursesData = await getAllCourses();
+      // Ensure coursesData is array or extract from property
+      const coursesList = Array.isArray(coursesData) ? coursesData : (coursesData.courses || []);
+      set({ courses: coursesList });
+
+      // Fetch Requests based on role
+      if (currentUser.role === UserRole.STUDENT) {
+        // For students, requests usually show their enrollments status
+        const myCoursesData = await getStudentCourses();
+        const myEnrollments = myCoursesData.enrollments || (Array.isArray(myCoursesData) ? myCoursesData : []);
+
+        // Map to RegistrationRequest format
+        const requests = myEnrollments.map((c: any) => ({
+          id: c.id ? String(c.id) : `req-${Math.random()}`,
+          studentId: currentUser.id,
+          studentName: currentUser.name,
+          courseId: c.course_id,
+          courseName: c.course_title || c.course?.title || c.course_id,
+          status: c.status,
+          timestamp: c.created_at || new Date().toISOString()
+        }));
+        set({ requests });
+      } else if ([UserRole.INSTRUCTOR, UserRole.ADVISOR, UserRole.ADMIN].includes(currentUser.role)) {
+        // For staff, requests are those pending their approval
+        const statusFilter = currentUser.role === UserRole.INSTRUCTOR ? RegistrationStatus.PENDING_INSTRUCTOR :
+          currentUser.role === UserRole.ADVISOR ? RegistrationStatus.PENDING_ADVISOR : undefined;
+
+        const reqsData = await getRegistrationRequests({ status: statusFilter });
+        const pendingRequests = reqsData.requests || (Array.isArray(reqsData) ? reqsData : []);
+        set({ requests: pendingRequests });
+      }
+    } catch (e) {
+      console.error("Failed to fetch data", e);
     }
-
-    const newRequest: RegistrationRequest = {
-      id: `req-${Date.now()}`,
-      studentId: currentUser.id,
-      studentName: currentUser.name,
-      courseId: course.id,
-      courseName: course.name,
-      status: RegistrationStatus.PENDING_INSTRUCTOR, // Initial state
-      timestamp: new Date().toISOString()
-    };
-
-    set({ requests: [...requests, newRequest] });
   },
 
-  updateRequestStatus: (requestId, newStatus) => {
-    set((state) => ({
-      requests: state.requests.map(r =>
-        r.id === requestId ? { ...r, status: newStatus } : r
-      )
-    }));
+  enrollCourse: async (courseId, semester) => {
+    try {
+      await enrollInCourse(courseId, semester);
+      get().fetchData();
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  },
+
+  handleRequestAction: async (requestId, status) => {
+    try {
+      // Backend expects number ID usually but let's handle string
+      const id = parseInt(requestId);
+      if (isNaN(id)) throw new Error("Invalid Request ID");
+      await updateRegistrationStatus(id, status);
+      get().fetchData();
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   }
 }));
 
-// Initialize store immediately to recover session before first render
+// Initialize store immediately
 useAppStore.getState().init();

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStudentRecord, getStudentRecordById, getStudentCourses } from './student.controller.js';
+import { getStudentRecord, getStudentRecordById, getStudentCourses, getStudentGrades, getTimetable } from './student.controller.js';
 import { authMiddleware } from '../../middlewares/auth.middleware.js';
 import { requireAnyRole } from '../../middlewares/rbac.middleware.js';
 import { Roles } from '../../config/roles.js';
@@ -11,6 +11,12 @@ router.get('/record', authMiddleware, getStudentRecord);
 
 // Get student courses (optionally filtered by semester)
 router.get('/courses', authMiddleware, getStudentCourses);
+
+// Get student grades organized by semester
+router.get('/grades', authMiddleware, getStudentGrades);
+
+// Get student timetable
+router.get('/timetable', authMiddleware, getTimetable);
 
 // Get any student's record (admin only or self)
 router.get('/record/:email', authMiddleware, getStudentRecordById);

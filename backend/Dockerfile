@@ -14,6 +14,7 @@ RUN npm install
 # Copy application source
 COPY src ./src
 COPY schema.sql ./schema.sql
+COPY seed.sql ./seed.sql
 
 EXPOSE 8080
 

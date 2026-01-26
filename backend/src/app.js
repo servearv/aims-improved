@@ -6,6 +6,11 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import studentRoutes from "./modules/student/student.routes.js";
 import courseRoutes from "./modules/course/course.routes.js";
+import offeringRoutes from "./modules/offering/offering.routes.js";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import advisorRoutes from "./modules/advisor/advisor.routes.js";
+import feedbackRoutes from "./modules/feedback/feedback.routes.js";
+import financeRoutes from "./modules/finance/finance.routes.js";
 
 dotenv.config();
 
@@ -50,6 +55,11 @@ app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/student", studentRoutes);
 app.use("/courses", courseRoutes);
+app.use("/api", offeringRoutes);
+app.use("/dashboard", dashboardRoutes);
+app.use("/advisor", advisorRoutes);
+app.use("/api", feedbackRoutes);
+app.use("/finance", financeRoutes);
 
 /**
  * Global error handler (optional but recommended)

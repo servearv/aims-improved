@@ -13,7 +13,7 @@ const Registration: React.FC = () => {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col gap-1.5">
         <h1 className="text-3xl font-bold tracking-tight text-white">Course Registration</h1>
-        <p className="text-gray-400 text-sm">Spring Semester 2024 • Phase II</p>
+        <p className="text-gray-400 text-sm">Session 2025-II • Phase I</p>
       </div>
 
       {currentUser.role === UserRole.STUDENT && <StudentRegistrationView />}
@@ -27,18 +27,20 @@ const Registration: React.FC = () => {
 // --- Student View Components ---
 
 const StudentRegistrationView: React.FC = () => {
-  const [courses, setCourses] = React.useState<Course[]>([]);
+  const [offerings, setOfferings] = React.useState<any[]>([]);
   const [requests, setRequests] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [currentSession] = React.useState('2025-II');
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [coursesData, reqsData] = await Promise.all([
-        api.getAllCourses(),
+      const [offeringsData, reqsData] = await Promise.all([
+        // Fetch offerings for the specific session that are approved/offered
+        api.getOfferings({ sessionId: currentSession, status: 'Offered' }),
         api.getStudentCourses()
       ]);
-      setCourses(coursesData.courses);
+      setOfferings(offeringsData.offerings || []);
       setRequests(reqsData.enrollments || []);
     } catch (err) {
       console.error('Failed to fetch student data', err);
@@ -53,10 +55,15 @@ const StudentRegistrationView: React.FC = () => {
 
   const handleEnroll = async (courseId: string) => {
     try {
-      await api.enrollInCourse(courseId, '2023-24 Autumn');
+      await api.enrollInCourse(courseId, currentSession);
       await fetchData();
-    } catch (err) {
+      alert('Enrollment request submitted successfully!');
+    } catch (err: any) {
       console.error('Enrollment failed', err);
+      // Show specific error from backend (Conflict, Credit Limit, etc.)
+      const errorMessage = err.response?.data?.error || err.message || 'Enrollment failed';
+      const errorDetails = err.response?.data?.details || '';
+      alert(`Error: ${errorMessage}\n${errorDetails}`);
     }
   };
 
@@ -83,30 +90,40 @@ const StudentRegistrationView: React.FC = () => {
           </div>
         </div>
         <div className="divide-y divide-white/5">
-          {courses.map(course => {
-            const existingRequest = getRequestForCourse(course.id);
+
+          {offerings.map(offering => {
+            // Mapping offering data to render
+            const courseId = offering.course_id;
+            const title = offering.title; // derived from join in getOfferings
+            const credits = offering.credits;
+            const instructors = offering.instructors || [];
+            const instructorNames = instructors.length > 0
+              ? instructors.map((i: any) => i.email.split('@')[0]).join(', ')
+              : 'TBA';
+
+            const existingRequest = getRequestForCourse(courseId);
             const isPending = existingRequest && existingRequest.status !== RegistrationStatus.APPROVED && !existingRequest.status.includes('REJECTED');
             const isApproved = existingRequest?.status === RegistrationStatus.APPROVED;
 
             return (
-              <div key={course.id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
+              <div key={courseId} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors group">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{course.code}</span>
-                    <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{course.name}</h4>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/10 text-gray-300 border border-white/5">{courseId}</span>
+                    <h4 className="font-medium text-white group-hover:text-blue-200 transition-colors">{title}</h4>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
                     <div className="flex items-center gap-1.5">
                       <User size={12} />
-                      {course.instructorName}
+                      {instructorNames}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Book size={12} />
-                      {course.credits} Credits
+                      {credits} Credits
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock size={12} />
-                      {course.schedule}
+                      {offering.slot_timings || 'TBA'}
                     </div>
                   </div>
                 </div>
@@ -118,7 +135,7 @@ const StudentRegistrationView: React.FC = () => {
                       {existingRequest.status.includes('REJECTED') && <span className="flex items-center gap-1 text-xs text-red-500 font-medium"><X size={14} /> Rejected</span>}
                     </div>
                   ) : (
-                    <Button size="sm" onClick={() => handleEnroll(course.id)} className="w-full sm:w-auto">Enroll</Button>
+                    <Button size="sm" onClick={() => handleEnroll(courseId)} className="w-full sm:w-auto">Enroll</Button>
                   )}
                 </div>
               </div>

@@ -47,6 +47,11 @@ docker-compose logs -f frontend
 docker-compose down
 ```
 
+6. DB Seeding:
+```bash
+docker exec -it aims_backend node src/config/seed-db.js
+```
+
 **Note**: The database schema will be automatically initialized on first startup. In development mode (NODE_ENV=development), OTPs will be logged to the console for testing.
 
 ### Manual Setup

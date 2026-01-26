@@ -94,21 +94,58 @@ export const getStudentEnrollments = async (studentEmail, semester = null) => {
   return result.rows;
 };
 
-export const getCourseEnrollments = async (courseId, semester = null) => {
+export const getCourseEnrollments = async (courseId, semester = null, includeAllStatuses = false) => {
   let query = `SELECT sc.*, s.entry_no, s.batch, s."group"
                FROM student_courses sc
                JOIN students s ON sc.student_email = s.email
                WHERE sc.course_id = $1`;
   const params = [courseId];
+  let paramCount = 2;
 
   if (semester) {
-    query += ` AND sc.semester = $2`;
+    query += ` AND sc.semester = $${paramCount++}`;
     params.push(semester);
+  }
+
+  // By default, only return approved enrollments (for grading purposes)
+  // APPROVED status means the student completed the enrollment workflow
+  if (!includeAllStatuses) {
+    query += ` AND UPPER(sc.status) IN ('APPROVED', 'ENROLLED', 'COMPLETED')`;
   }
 
   query += ` ORDER BY s.entry_no`;
 
   const result = await pool.query(query, params);
   return result.rows;
+};
+
+export const deleteEnrollment = async (id, studentEmail = null) => {
+  // If studentEmail is provided, verify ownership
+  if (studentEmail) {
+    const check = await pool.query(
+      'SELECT * FROM student_courses WHERE id = $1 AND student_email = $2',
+      [id, studentEmail]
+    );
+    if (check.rowCount === 0) {
+      throw new Error('Enrollment not found or not authorized');
+    }
+  }
+
+  const result = await pool.query(
+    'DELETE FROM student_courses WHERE id = $1 RETURNING *',
+    [id]
+  );
+  return result.rows[0];
+};
+
+export const getEnrollmentById = async (id) => {
+  const result = await pool.query(
+    `SELECT sc.*, c.title as course_title, c.credits as course_credits
+     FROM student_courses sc
+     JOIN courses c ON sc.course_id = c.course_id
+     WHERE sc.id = $1`,
+    [id]
+  );
+  return result.rows[0];
 };
 

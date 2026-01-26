@@ -63,16 +63,16 @@ const Layout: React.FC = () => {
         return [
           { label: 'Admin Dashboard', icon: LayoutDashboard, path: '/' },
           { label: 'User Management', icon: Users, path: '/admin/users' },
-          { label: 'Course Catalog', icon: BookOpen, path: '/academics/courses-offered' },
-          { label: 'System Analytics', icon: Server, path: '/admin/analytics' },
-          { label: 'Finance Overview', icon: CreditCard, path: '/finance' },
-          ...common
+          { label: 'Pending Approvals', icon: ClipboardCheck, path: '/admin/pending-approvals' },
         ];
       case UserRole.INSTRUCTOR:
         return [
           { label: 'Faculty Dashboard', icon: LayoutDashboard, path: '/' },
-          { label: 'My Courses', icon: BookOpen, path: '/academics/courses-offered' },
+
+          { label: 'Offered Courses', icon: ListFilter, path: '/faculty/offerings' },
+          { label: 'Offer a Course', icon: GraduationCap, path: '/faculty/offerings/new' },
           { label: 'Grading Portal', icon: ClipboardCheck, path: '/faculty/grading' },
+          { label: 'Upload Grades', icon: FileBarChart, path: '/faculty/grades/upload' },
           { label: 'Student Approvals', icon: FileBarChart, path: '/academics/registration' },
           { label: 'Schedule', icon: CalendarDays, path: '/academics/timetable' },
           ...common
@@ -81,6 +81,8 @@ const Layout: React.FC = () => {
         return [
           { label: 'Advisor Dashboard', icon: LayoutDashboard, path: '/' },
           { label: 'Advisee List', icon: Users, path: '/advisor/advisees' },
+          { label: 'Offered Courses', icon: ListFilter, path: '/faculty/offerings' },
+          { label: 'Offer a Course', icon: GraduationCap, path: '/faculty/offerings/new' },
           { label: 'Registration Approval', icon: ClipboardCheck, path: '/academics/registration' },
           { label: 'Degree Audit', icon: GraduationCap, path: '/advisor/audit' },
           ...common
@@ -88,14 +90,13 @@ const Layout: React.FC = () => {
       case UserRole.STUDENT:
       default:
         return [
-          { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-          { label: 'Academics', icon: BookOpen, path: '/academics/registration' },
-          { label: 'Courses Offered', icon: ListFilter, path: '/academics/courses-offered' },
+          { label: 'Dashboard', icon: LayoutDashboard, path: '/student/dashboard' },
+          { label: 'Course Registration', icon: ClipboardCheck, path: '/student/registration' },
+          { label: 'Courses Offered', icon: ListFilter, path: '/student/courses' },
+          { label: 'Time Table', icon: CalendarDays, path: '/student/timetable' },
           { label: 'Academic Events', icon: CalendarRange, path: '/academics/events' },
-          { label: 'Grades', icon: GraduationCap, path: '/academics/grades' },
-          { label: 'Timetable', icon: CalendarDays, path: '/academics/timetable' },
-          { label: 'Student Record', icon: FileText, path: '/student-record' },
-          { label: 'Course Feedback', icon: MessageSquare, path: '/course-feedback' },
+          { label: 'Grades', icon: GraduationCap, path: '/student/grades' },
+          { label: 'Course Feedback', icon: MessageSquare, path: '/student/feedback' },
           { label: 'Finance', icon: CreditCard, path: '/finance' },
           ...common
         ];

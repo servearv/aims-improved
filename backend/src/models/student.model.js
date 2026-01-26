@@ -54,7 +54,7 @@ export const listStudents = async (filters = {}) => {
   }
 
   query += ` ORDER BY s.entry_no`;
-  
+
   const result = await pool.query(query, params);
   return result.rows;
 };
@@ -87,5 +87,20 @@ export const updateStudent = async (email, updates) => {
     values
   );
   return result.rows[0];
+};
+
+export const getStudentTimetable = async (email) => {
+  const result = await pool.query(
+    `SELECT c.course_id as code, c.title, c.type, c.classroom as room,
+            s.day_of_week, s.start_time, s.end_time, s.timings
+     FROM student_courses sc
+     JOIN courses c ON sc.course_id = c.course_id
+     LEFT JOIN slots s ON c.slot_id = s.slot_id
+     WHERE sc.student_email = $1 
+       AND sc.status IN ('Enrolled', 'Approved')
+       AND s.day_of_week IS NOT NULL`,
+    [email]
+  );
+  return result.rows;
 };
 

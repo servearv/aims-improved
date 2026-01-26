@@ -20,15 +20,38 @@ export async function initDatabase() {
     await pool.query(schema);
     console.log('✅ Database schema initialized successfully');
 
-    // Check if we need to create a default admin user
+    // Check if we need to seed the database
     const userCheck = await pool.query('SELECT COUNT(*) FROM users');
-    if (parseInt(userCheck.rows[0].count) === 0 && process.env.DEFAULT_ADMIN_EMAIL) {
-      const rolesModule = await import('../config/roles.js');
-      await pool.query(
-        'INSERT INTO users (email, role, is_active) VALUES ($1, $2, true) ON CONFLICT (email) DO NOTHING',
-        [process.env.DEFAULT_ADMIN_EMAIL, rolesModule.Roles.ADMIN]
-      );
-      console.log(`✅ Created default admin user: ${process.env.DEFAULT_ADMIN_EMAIL}`);
+    const userCount = parseInt(userCheck.rows[0].count);
+
+    if (userCount === 0) {
+      // Run seed.sql if no users exist
+      const seedPath = path.join(__dirname, '../../seed.sql');
+      if (fs.existsSync(seedPath)) {
+        let seed = fs.readFileSync(seedPath, 'utf8');
+        // Filter out psql meta-commands (lines starting with \) as they cannot be executed via pg driver
+        seed = seed
+          .split('\n')
+          .filter(line => !line.trim().startsWith('\\'))
+          .join('\n');
+        await pool.query(seed);
+        console.log('✅ Database seeded successfully');
+      }
+    } else {
+      console.log(`ℹ️ Database already has ${userCount} users, skipping seed`);
+    }
+
+    // Create default admin if specified and doesn't exist
+    if (process.env.DEFAULT_ADMIN_EMAIL) {
+      const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', [process.env.DEFAULT_ADMIN_EMAIL]);
+      if (adminCheck.rowCount === 0) {
+        const rolesModule = await import('../config/roles.js');
+        await pool.query(
+          'INSERT INTO users (email, role, is_active) VALUES ($1, $2, true) ON CONFLICT (email) DO NOTHING',
+          [process.env.DEFAULT_ADMIN_EMAIL, rolesModule.Roles.ADMIN]
+        );
+        console.log(`✅ Created default admin user: ${process.env.DEFAULT_ADMIN_EMAIL}`);
+      }
     }
   } catch (err) {
     // If schema already exists, that's fine
@@ -40,4 +63,5 @@ export async function initDatabase() {
     }
   }
 }
+
 

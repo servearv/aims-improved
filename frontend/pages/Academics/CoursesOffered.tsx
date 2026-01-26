@@ -25,7 +25,7 @@ const CoursesOffered: React.FC = () => {
     department: '',
     code: '',
     title: '',
-    session: '2024-II',
+    session: '2025-II',
     ltp: '',
     instructor: '',
     status: ''
@@ -35,28 +35,18 @@ const CoursesOffered: React.FC = () => {
     try {
       setHasSearched(true);
       setLoading(true);
-      
+
       const apiFilters: any = {};
       if (filters.status) apiFilters.status = filters.status;
-      
+      if (filters.code) apiFilters.code = filters.code;
+      if (filters.title) apiFilters.title = filters.title;
+      if (filters.department) apiFilters.department = filters.department;
+      if (filters.ltp) apiFilters.ltp = filters.ltp;
+      if (filters.instructor) apiFilters.instructorId = filters.instructor;
+
+      console.log('Sending filters:', apiFilters); // Debug log
       const data = await getAllCourses(apiFilters);
-      let courses = data.courses || [];
-      
-      // Apply client-side filtering for additional filters
-      if (filters.code) {
-        courses = courses.filter(c => c.course_id.toLowerCase().includes(filters.code.toLowerCase()));
-      }
-      if (filters.title) {
-        courses = courses.filter(c => c.title.toLowerCase().includes(filters.title.toLowerCase()));
-      }
-      if (filters.instructor) {
-        courses = courses.filter(c => 
-          c.instructor_email?.toLowerCase().includes(filters.instructor.toLowerCase()) ||
-          c.instructor_dept?.toLowerCase().includes(filters.instructor.toLowerCase())
-        );
-      }
-      
-      setResults(courses);
+      setResults(data.courses || []);
     } catch (err: any) {
       console.error('Error fetching courses:', err);
       setResults([]);
@@ -70,7 +60,7 @@ const CoursesOffered: React.FC = () => {
       department: '',
       code: '',
       title: '',
-      session: '2024-II',
+      session: '2025-II',
       ltp: '',
       instructor: '',
       status: ''
@@ -85,7 +75,7 @@ const CoursesOffered: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
+
       {/* Page Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-white">Courses Offered</h1>
@@ -95,10 +85,10 @@ const CoursesOffered: React.FC = () => {
       {/* Filter Section */}
       <Card className="p-5 bg-[#18181b] border-white/10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 items-end">
-          
+
           <div className="xl:col-span-1">
             <label className="text-xs text-gray-500 mb-1.5 block">Offering Department</label>
-            <select 
+            <select
               className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
               value={filters.department}
               onChange={(e) => handleChange('department', e.target.value)}
@@ -114,73 +104,75 @@ const CoursesOffered: React.FC = () => {
           </div>
 
           <div className="xl:col-span-1">
-             <label className="text-xs text-gray-500 mb-1.5 block">Course Code</label>
-             <Input 
-                placeholder="" 
-                className="h-[34px] text-xs" 
-                value={filters.code}
-                onChange={(e) => handleChange('code', e.target.value)}
-             />
+            <label className="text-xs text-gray-500 mb-1.5 block">Course Code</label>
+            <Input
+              placeholder=""
+              className="h-[34px] text-xs"
+              value={filters.code}
+              onChange={(e) => handleChange('code', e.target.value)}
+            />
           </div>
 
           <div className="xl:col-span-2">
-             <label className="text-xs text-gray-500 mb-1.5 block">Title</label>
-             <Input 
-                placeholder="" 
-                className="h-[34px] text-xs"
-                value={filters.title}
-                onChange={(e) => handleChange('title', e.target.value)}
-             />
+            <label className="text-xs text-gray-500 mb-1.5 block">Title</label>
+            <Input
+              placeholder=""
+              className="h-[34px] text-xs"
+              value={filters.title}
+              onChange={(e) => handleChange('title', e.target.value)}
+            />
           </div>
 
           <div className="xl:col-span-1">
-             <label className="text-xs text-gray-500 mb-1.5 block">Acad session</label>
-             <div className="flex gap-2">
-               <select 
-                 className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
-                 value={filters.session}
-                 onChange={(e) => handleChange('session', e.target.value)}
-               >
-                 <option value="2024-II">2024-II</option>
-                 <option value="2024-I">2024-I</option>
-               </select>
-             </div>
+            <label className="text-xs text-gray-500 mb-1.5 block">Acad session</label>
+            <div className="flex gap-2">
+              <select
+                className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
+                value={filters.session}
+                onChange={(e) => handleChange('session', e.target.value)}
+              >
+                <option value="2025-II">2025-II (Current)</option>
+                <option value="2025-I">2025-I</option>
+                <option value="2024-II">2024-II</option>
+                <option value="2024-I">2024-I</option>
+              </select>
+            </div>
           </div>
-           {/* "Other" Checkbox simulated as per screenshot layout flow, but kept simple here */}
-          
+          {/* "Other" Checkbox simulated as per screenshot layout flow, but kept simple here */}
+
           <div className="xl:col-span-1">
-             <label className="text-xs text-gray-500 mb-1.5 block">L-T-P</label>
-             <Input 
-                placeholder="" 
-                className="h-[34px] text-xs"
-                value={filters.ltp}
-                onChange={(e) => handleChange('ltp', e.target.value)}
-             />
+            <label className="text-xs text-gray-500 mb-1.5 block">L-T-P</label>
+            <Input
+              placeholder=""
+              className="h-[34px] text-xs"
+              value={filters.ltp}
+              onChange={(e) => handleChange('ltp', e.target.value)}
+            />
           </div>
 
           <div className="xl:col-span-1">
-             <label className="text-xs text-gray-500 mb-1.5 block">Instructor</label>
-             <Input 
-                placeholder="" 
-                className="h-[34px] text-xs"
-                value={filters.instructor}
-                onChange={(e) => handleChange('instructor', e.target.value)}
-             />
+            <label className="text-xs text-gray-500 mb-1.5 block">Instructor</label>
+            <Input
+              placeholder=""
+              className="h-[34px] text-xs"
+              value={filters.instructor}
+              onChange={(e) => handleChange('instructor', e.target.value)}
+            />
           </div>
 
           <div className="xl:col-span-1 flex gap-2">
-             <div className="flex-1">
-                <label className="text-xs text-gray-500 mb-1.5 block">Status</label>
-                <select 
-                  className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
-                  value={filters.status}
-                  onChange={(e) => handleChange('status', e.target.value)}
-                >
-                  <option value="">All</option>
-                  <option value="Offered">Offered</option>
-                  <option value="Withdrawn">Withdrawn</option>
-                </select>
-             </div>
+            <div className="flex-1">
+              <label className="text-xs text-gray-500 mb-1.5 block">Status</label>
+              <select
+                className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:border-blue-500/50 outline-none"
+                value={filters.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="Offered">Offered</option>
+                <option value="Withdrawn">Withdrawn</option>
+              </select>
+            </div>
           </div>
 
         </div>
@@ -191,17 +183,17 @@ const CoursesOffered: React.FC = () => {
             If you do not find the desired results, please try specifying fewer criteria. All non-empty search fields are used <strong>together</strong>.
           </p>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={handleSearch}
               className="w-8 h-8 rounded border border-green-500/30 bg-green-500/10 text-green-500 hover:bg-green-500/20 flex items-center justify-center transition-colors"
               title="Search"
             >
               <Search size={16} />
             </button>
-            <button 
-               onClick={handleReset}
-               className="w-8 h-8 rounded border border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-colors"
-               title="Clear"
+            <button
+              onClick={handleReset}
+              className="w-8 h-8 rounded border border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+              title="Clear"
             >
               <Eraser size={16} />
             </button>
@@ -214,7 +206,7 @@ const CoursesOffered: React.FC = () => {
         <div className="p-3 bg-white/5 border-b border-white/10">
           <h3 className="text-sm font-semibold text-white ml-2">Results</h3>
         </div>
-        
+
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <Loader2 className="w-8 h-8 mb-4 animate-spin text-blue-500" />
@@ -222,11 +214,11 @@ const CoursesOffered: React.FC = () => {
           </div>
         ) : !hasSearched && results.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-             <p>Nothing to show yet! Click Search to load courses.</p>
+            <p>Nothing to show yet! Click Search to load courses.</p>
           </div>
         ) : results.length === 0 ? (
-           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-             <p>No courses found matching criteria.</p>
+          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <p>No courses found matching criteria.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -253,7 +245,7 @@ const CoursesOffered: React.FC = () => {
                     <td className="px-4 py-3 text-gray-400 font-mono">{course.ltp || '3-0-0'}</td>
                     <td className="px-4 py-3 text-gray-400">{course.instructor_email || 'N/A'}</td>
                     <td className="px-4 py-3">
-                       <Badge color="green">{course.status || 'Offered'}</Badge>
+                      <Badge color="green">{course.status || 'Offered'}</Badge>
                     </td>
                   </tr>
                 ))}

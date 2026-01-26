@@ -22,8 +22,8 @@ export const createCourse = async (courseData) => {
                           capacity, classroom, ltp, capa_cutoff, prereqs, open_for)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      RETURNING *`,
-    [courseId, title, credits, slotId, instructorId, type, status, capacity, 
-     classroom, ltp, capaCutoff, prereqs, openFor]
+    [courseId, title, credits, slotId, instructorId, type, status, capacity,
+      classroom, ltp, capaCutoff, prereqs, openFor]
   );
   return result.rows[0];
 };
@@ -65,9 +65,27 @@ export const listCourses = async (filters = {}) => {
     query += ` AND c.type = $${paramCount++}`;
     params.push(filters.type);
   }
+  // New filters implementation
+  if (filters.code) {
+    query += ` AND c.course_id ILIKE $${paramCount++}`;
+    params.push(`%${filters.code}%`);
+  }
+  if (filters.title) {
+    query += ` AND c.title ILIKE $${paramCount++}`;
+    params.push(`%${filters.title}%`);
+  }
+  if (filters.department) {
+    // Filter by instructor's department
+    query += ` AND i.dept ILIKE $${paramCount++}`;
+    params.push(`%${filters.department}%`);
+  }
+  if (filters.ltp) {
+    query += ` AND c.ltp ILIKE $${paramCount++}`;
+    params.push(`%${filters.ltp}%`);
+  }
 
   query += ` ORDER BY c.course_id`;
-  
+
   const result = await pool.query(query, params);
   return result.rows;
 };
